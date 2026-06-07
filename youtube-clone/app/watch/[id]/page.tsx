@@ -132,8 +132,8 @@ export default function WatchPage() {
     const storedLikes = localStorage.getItem(likesStorageKey);
     const storedDislikes = localStorage.getItem(dislikesStorageKey);
     
-    const likes = storedLikes ? JSON.parse(storedLikes) : [];
-    const dislikes = storedDislikes ? JSON.parse(storedDislikes) : [];
+    const likes: string[] = storedLikes ? JSON.parse(storedLikes) : [];
+    const dislikes: string[] = storedDislikes ? JSON.parse(storedDislikes) : [];
     
     setLikesCount(likes.length);
     setDislikesCount(dislikes.length);
@@ -153,10 +153,10 @@ export default function WatchPage() {
     
     const storageKey = `youtube_likes_${videoId}`;
     const storedLikes = localStorage.getItem(storageKey);
-    let likes = storedLikes ? JSON.parse(storedLikes) : [];
+    let likes: string[] = storedLikes ? JSON.parse(storedLikes) : [];
     
     if (userLiked) {
-      likes = likes.filter(id => id !== userId);
+      likes = likes.filter((id: string) => id !== userId);
       setUserLiked(false);
       setLikesCount(prev => prev - 1);
     } else {
@@ -176,8 +176,8 @@ export default function WatchPage() {
     const userId = localStorage.getItem("userId");
     const storageKey = `youtube_dislikes_${videoId}`;
     const storedDislikes = localStorage.getItem(storageKey);
-    let dislikes = storedDislikes ? JSON.parse(storedDislikes) : [];
-    dislikes = dislikes.filter(id => id !== userId);
+    let dislikes: string[] = storedDislikes ? JSON.parse(storedDislikes) : [];
+    dislikes = dislikes.filter((id: string) => id !== userId);
     localStorage.setItem(storageKey, JSON.stringify(dislikes));
     setUserDisliked(false);
     setDislikesCount(prev => prev - 1);
@@ -192,10 +192,10 @@ export default function WatchPage() {
     
     const storageKey = `youtube_dislikes_${videoId}`;
     const storedDislikes = localStorage.getItem(storageKey);
-    let dislikes = storedDislikes ? JSON.parse(storedDislikes) : [];
+    let dislikes: string[] = storedDislikes ? JSON.parse(storedDislikes) : [];
     
     if (userDisliked) {
-      dislikes = dislikes.filter(id => id !== userId);
+      dislikes = dislikes.filter((id: string) => id !== userId);
       setUserDisliked(false);
       setDislikesCount(prev => prev - 1);
     } else {
@@ -215,8 +215,8 @@ export default function WatchPage() {
     const userId = localStorage.getItem("userId");
     const storageKey = `youtube_likes_${videoId}`;
     const storedLikes = localStorage.getItem(storageKey);
-    let likes = storedLikes ? JSON.parse(storedLikes) : [];
-    likes = likes.filter(id => id !== userId);
+    let likes: string[] = storedLikes ? JSON.parse(storedLikes) : [];
+    likes = likes.filter((id: string) => id !== userId);
     localStorage.setItem(storageKey, JSON.stringify(likes));
     setUserLiked(false);
     setLikesCount(prev => prev - 1);
