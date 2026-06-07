@@ -67,19 +67,14 @@ export default function ChannelPage() {
   const fetchVideos = async () => {
     try {
       const userId = channelId || "1";
-      console.log("Fetching for userId:", userId);
-      
-      // Use environment variable for API URL
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${API_URL}/api/upload/user/${userId}`);
+      // HARDCODED URL - THIS WORKS
+      const res = await fetch(`http://localhost:5000/api/upload/user/${userId}`);
       
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
       
       const data = await res.json();
-      console.log("Raw response:", data);
-      console.log("Length:", data.length);
       setChannelVideos(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -88,7 +83,6 @@ export default function ChannelPage() {
   };
 
   useEffect(() => {
-    console.log("Channel ID from URL:", channelId);
     const userId = channelId || "1";
     setChannel(getSampleChannelData(userId));
     setIsLoading(false);
