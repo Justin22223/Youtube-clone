@@ -2,7 +2,7 @@ services:
   - type: web
     name: youtube-clone-backend
     runtime: node
-    buildCommand: npm install
+    buildCommand: npm install --legacy-peer-deps
     startCommand: node index.js
     rootDir: server
     envVars:
