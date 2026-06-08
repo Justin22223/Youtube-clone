@@ -53,15 +53,25 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000;
 const DB_URL = process.env.DB_URL;
 
-mongoose
-  .connect(DB_URL)
-  .then(() => {
-    console.log("✅ MongoDB connected successfully");
-    app.listen(PORT, () => {
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log(`📍 http://localhost:${PORT}`);
+const directUrlFallback = "mongodb://admin:admin@ac-tn0jhd4-shard-00-00.0gf7bjg.mongodb.net:27017,ac-tn0jhd4-shard-00-01.0gf7bjg.mongodb.net:27017,ac-tn0jhd4-shard-00-02.0gf7bjg.mongodb.net:27017/youtube?ssl=true&replicaSet=atlas-11gsr9-shard-0&authSource=admin&appName=Cluster0";
+
+const connectWithRetry = (url, isFallback = false) => {
+  mongoose
+    .connect(url)
+    .then(() => {
+      console.log("✅ MongoDB connected successfully" + (isFallback ? " (using direct shard URL fallback)" : ""));
+      app.listen(PORT, () => {
+        console.log(`✅ Server running on port ${PORT}`);
+        console.log(`📍 http://localhost:${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error("❌ MongoDB connection error:", error.message);
+      if (!isFallback && (error.message.includes("querySrv") || error.message.includes("ENOTFOUND") || error.message.includes("ECONNREFUSED") || error.message.includes("timeout"))) {
+        console.log("⚠️ MongoDB SRV resolution failed. Retrying connection using direct shard URL...");
+        connectWithRetry(directUrlFallback, true);
+      }
     });
-  })
-  .catch((error) => {
-    console.error("❌ MongoDB connection error:", error.message);
-  });
+};
+
+connectWithRetry(DB_URL);

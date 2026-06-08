@@ -1,6 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
-import Video from "../models/Video.js";
+import Video from "../models/video.js";
 
 const router = express.Router();
 

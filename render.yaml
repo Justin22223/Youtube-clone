@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: youtube-clone-backend
+    runtime: node
+    buildCommand: npm install
+    startCommand: node index.js
+    rootDir: server
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: DB_URL
+        value: mongodb+srv://admin:admin@cluster0.0gf7bjg.mongodb.net/youtube?appName=Cluster0
+      - key: JWT_SECRET
+        value: supersecretjwtkeychangeinprod
+      - key: FRONTEND_URL
+        value: http://localhost:3000

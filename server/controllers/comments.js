@@ -1,4 +1,4 @@
-import Comment from "../models/comments.js";
+import Comment from "../models/Comment.js";
 
 // Get comments for a video
 export const getComments = async (req, res) => {
@@ -57,16 +57,15 @@ export const likeComment = async (req, res) => {
     const { userId } = req.body;
     
     const comment = await Comment.findById(id);
-    const hasLiked = comment.likedBy.includes(userId);
-    const hasDisliked = comment.dislikedBy.includes(userId);
+    const hasLiked = comment.likes.includes(userId);
+    const hasDisliked = comment.dislikes.includes(userId);
     
     if (hasLiked) {
-      await comment.updateOne({ $pull: { likedBy: userId }, $inc: { likes: -1 } });
+      await comment.updateOne({ $pull: { likes: userId } });
     } else {
-      const update: any = { $push: { likedBy: userId }, $inc: { likes: 1 } };
+      const update = { $push: { likes: userId } };
       if (hasDisliked) {
-        update.$pull = { dislikedBy: userId };
-        update.$inc = { ...update.$inc, dislikes: -1 };
+        update.$pull = { dislikes: userId };
       }
       await comment.updateOne(update);
     }
@@ -84,16 +83,15 @@ export const dislikeComment = async (req, res) => {
     const { userId } = req.body;
     
     const comment = await Comment.findById(id);
-    const hasDisliked = comment.dislikedBy.includes(userId);
-    const hasLiked = comment.likedBy.includes(userId);
+    const hasDisliked = comment.dislikes.includes(userId);
+    const hasLiked = comment.likes.includes(userId);
     
     if (hasDisliked) {
-      await comment.updateOne({ $pull: { dislikedBy: userId }, $inc: { dislikes: -1 } });
+      await comment.updateOne({ $pull: { dislikes: userId } });
     } else {
-      const update: any = { $push: { dislikedBy: userId }, $inc: { dislikes: 1 } };
+      const update = { $push: { dislikes: userId } };
       if (hasLiked) {
-        update.$pull = { likedBy: userId };
-        update.$inc = { ...update.$inc, likes: -1 };
+        update.$pull = { likes: userId };
       }
       await comment.updateOne(update);
     }

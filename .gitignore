@@ -1,2 +1,5 @@
 .vercel
 .env*
+server/uploads/
+server/node_modules/
+node_modules/
