@@ -15,6 +15,15 @@ import {
   PlusCircle
 } from "lucide-react";
 import ChannelDialog from "./channel-dialog";
+import { ElementType } from "react";
+
+interface MenuItem {
+  name: string;
+  icon: ElementType;
+  path: string;
+  action?: () => void;
+  isCreateChannel?: boolean;
+}
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -49,7 +58,7 @@ const Sidebar = () => {
     window.location.href = `/channel/${newChannelData.handle?.replace("@", "") || "1"}`;
   };
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { name: "Home", icon: Home, path: "/" },
     { name: "Explore", icon: Compass, path: "/" },
     { name: "Subscription", icon: Users, path: "/" },
@@ -58,7 +67,7 @@ const Sidebar = () => {
     { name: "Watch later", icon: Clock, path: "/watch-later" },
   ];
 
-  const channelItems = hasChannel 
+  const channelItems: MenuItem[] = hasChannel 
     ? [
         { name: "Your channel", icon: User, path: `/channel/${channelHandle}` },
         { name: "Your videos", icon: PlaySquare, path: `/channel/${channelHandle}?tab=videos` },
@@ -76,6 +85,7 @@ const Sidebar = () => {
           {allMenuItems.map((item) => {
             const isActive = item.path !== "#" && pathname === item.path;
             
+            // Fixed: Check if action exists on the item
             if (item.action) {
               return (
                 <button

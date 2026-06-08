@@ -8,6 +8,17 @@ import { useRouter } from "next/navigation";
 import ChannelDialog from "./channel-dialog";
 import { useAuth } from "@/lib/AuthContext";
 import { getUserWithChannel, saveUserAfterLogin } from "@/lib/firebase";
+import { ElementType } from "react";
+
+interface MenuItem {
+  name: string;
+  icon: ElementType;
+  path?: string;
+  onClick?: () => void;
+  divider?: boolean;
+  isCreateChannel?: boolean;
+  isSignOut?: boolean;
+}
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -31,12 +42,14 @@ const Header = () => {
           const userData = await getUserWithChannel(user.uid);
           console.log("User data from Firestore:", userData);
           
-          if (userData?.hasChannel && userData?.channel) {
+          // Fixed: Proper type checking for userData and channel
+          if (userData && typeof userData === 'object' && 'hasChannel' in userData && 'channel' in userData && userData.hasChannel && userData.channel) {
+            const channel = userData.channel as any;
             setHasChannel(true);
-            setChannelHandle(userData.channel.handle?.replace("@", "") || user.uid);
-            localStorage.setItem("channelData", JSON.stringify(userData.channel));
+            setChannelHandle(channel.handle?.replace("@", "") || user.uid);
+            localStorage.setItem("channelData", JSON.stringify(channel));
             localStorage.setItem("hasChannel", "true");
-            localStorage.setItem("channelHandle", userData.channel.handle?.replace("@", "") || user.uid);
+            localStorage.setItem("channelHandle", channel.handle?.replace("@", "") || user.uid);
           } else {
             setHasChannel(false);
           }
@@ -110,12 +123,12 @@ const Header = () => {
   };
 
   // Menu items based on auth state
-  const getMenuItems = () => {
+  const getMenuItems = (): MenuItem[] => {
     if (!user) {
       return [];
     }
 
-    return [
+    const items: MenuItem[] = [
       ...(hasChannel ? [
         { name: "Your Channel", icon: Video, path: `/channel/${user?.uid || channelHandle}`, onClick: () => setIsDropdownOpen(false) }
       ] : [
@@ -124,9 +137,11 @@ const Header = () => {
       { name: "History", icon: History, path: "/history", onClick: () => setIsDropdownOpen(false) },
       { name: "Liked videos", icon: ThumbsUp, path: "/liked", onClick: () => setIsDropdownOpen(false) },
       { name: "Watch later", icon: Clock, path: "/watch-later", onClick: () => setIsDropdownOpen(false) },
-      { divider: true },
+      { divider: true, name: "", icon: Video },
       { name: "Sign out", icon: LogOut, onClick: handleSignOut, isSignOut: true },
     ];
+    
+    return items;
   };
 
   const menuItems = getMenuItems();
@@ -243,7 +258,7 @@ const Header = () => {
                             onClick={() => setIsDropdownOpen(false)}
                             className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                           >
-                            <item.icon className="w-4 h-4" />
+                            {item.icon && <item.icon className="w-4 h-4" />}
                             <span>{item.name}</span>
                           </Link>
                         ) : (
@@ -258,7 +273,7 @@ const Header = () => {
                                 : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                             }`}
                           >
-                            <item.icon className="w-4 h-4" />
+                            {item.icon && <item.icon className="w-4 h-4" />}
                             <span>{item.name}</span>
                           </button>
                         )

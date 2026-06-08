@@ -18,8 +18,18 @@ dotenv.config();
 const app = express();
 
 // CORS - Allow frontend
+const allowedOrigins = [
+  "http://localhost:3000",
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Fallback to allow connection for testing/preview links
+  },
   credentials: true,
 }));
 

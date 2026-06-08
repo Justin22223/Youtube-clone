@@ -102,8 +102,9 @@ const VideoUploader = ({ channelId, onUploadComplete, onClose }: VideoUploaderPr
     formData.append("visibility", visibility);
     
     try {
-      // HARDCODED URL - fixes the Server Action error
-      const response = await fetch("http://localhost:5000/api/upload/video", {
+      // Use configured Backend URL
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      const response = await fetch(`${BACKEND_URL}/api/upload/video`, {
         method: "POST",
         body: formData,
       });

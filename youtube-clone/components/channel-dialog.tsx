@@ -119,8 +119,9 @@ const ChannelDialog = ({
     const loadChannelData = async () => {
       if (mode === "edit" && user && initialData) {
         const userData = await getUserWithChannel(user.uid);
-        if (userData?.channel) {
-          const channel = userData.channel;
+        // Fixed: Added proper type checking for userData
+        if (userData && typeof userData === 'object' && 'channel' in userData && userData.channel) {
+          const channel = userData.channel as any;
           setFormData({
             name: channel.name || "",
             handle: channel.handle || "",
@@ -213,7 +214,7 @@ const ChannelDialog = ({
       }
       
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving channel:", error);
       setSaveError(error.message || "Failed to create channel. Please try again.");
     } finally {

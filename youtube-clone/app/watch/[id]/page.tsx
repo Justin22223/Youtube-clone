@@ -34,6 +34,8 @@ const formatDate = (dateString: string) => {
   }
 };
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
 export default function WatchPage() {
   const params = useParams();
   const videoId = params.id as string;
@@ -63,7 +65,7 @@ export default function WatchPage() {
     if (!userId) return;
     
     try {
-      const res = await fetch(`http://localhost:5000/api/watchlater/check/${userId}/${videoId}`);
+      const res = await fetch(`${BACKEND_URL}/api/watchlater/check/${userId}/${videoId}`);
       const data = await res.json();
       setIsInWatchLater(data.isInWatchLater);
       setWatchLaterId(data.id);
@@ -83,7 +85,7 @@ export default function WatchPage() {
     try {
       if (isInWatchLater) {
         // Remove from watch later
-        const res = await fetch(`http://localhost:5000/api/watchlater/user/${userId}/video/${videoId}`, {
+        const res = await fetch(`${BACKEND_URL}/api/watchlater/user/${userId}/video/${videoId}`, {
           method: "DELETE",
         });
         if (res.ok) {
@@ -106,7 +108,7 @@ export default function WatchPage() {
           timestamp: new Date().toLocaleDateString(),
         };
         
-        const res = await fetch("http://localhost:5000/api/watchlater", {
+        const res = await fetch(`${BACKEND_URL}/api/watchlater`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(videoData),
@@ -226,7 +228,7 @@ export default function WatchPage() {
     if (!isYouTubeVideo) {
       const fetchVideo = async () => {
         try {
-          const res = await fetch(`http://localhost:5000/api/videos/${videoId}`);
+          const res = await fetch(`${BACKEND_URL}/api/videos/${videoId}`);
           const data = await res.json();
           setVideo(data);
         } catch (error) {
@@ -248,7 +250,7 @@ export default function WatchPage() {
       const userId = localStorage.getItem("userId");
       if (!userId) return;
       
-      const res = await fetch(`http://localhost:5000/api/videos/like-status/${videoId}?userId=${userId}`);
+      const res = await fetch(`${BACKEND_URL}/api/videos/like-status/${videoId}?userId=${userId}`);
       const data = await res.json();
       setLikesCount(data.likesCount || 0);
       setDislikesCount(data.dislikesCount || 0);
@@ -261,7 +263,7 @@ export default function WatchPage() {
 
   const fetchComments = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/comments/${videoId}`);
+      const res = await fetch(`${BACKEND_URL}/api/comments/${videoId}`);
       const data = await res.json();
       setComments(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -285,7 +287,7 @@ export default function WatchPage() {
     }
     
     try {
-      const res = await fetch(`http://localhost:5000/api/videos/like/${videoId}`, {
+      const res = await fetch(`${BACKEND_URL}/api/videos/like/${videoId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
@@ -308,7 +310,7 @@ export default function WatchPage() {
     }
     
     try {
-      const res = await fetch(`http://localhost:5000/api/videos/dislike/${videoId}`, {
+      const res = await fetch(`${BACKEND_URL}/api/videos/dislike/${videoId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
@@ -335,7 +337,7 @@ export default function WatchPage() {
     }
     
     try {
-      const res = await fetch("http://localhost:5000/api/comments", {
+      const res = await fetch(`${BACKEND_URL}/api/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -359,7 +361,7 @@ export default function WatchPage() {
     if (!userId) return;
     
     try {
-      await fetch(`http://localhost:5000/api/comments/like/${commentId}`, {
+      await fetch(`${BACKEND_URL}/api/comments/like/${commentId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
@@ -544,7 +546,7 @@ export default function WatchPage() {
 
   let videoUrl = video.videoUrl;
   if (videoUrl && !videoUrl.startsWith('http')) {
-    videoUrl = `http://localhost:5000${videoUrl}`;
+    videoUrl = `${BACKEND_URL}${videoUrl}`;
   }
 
   return (

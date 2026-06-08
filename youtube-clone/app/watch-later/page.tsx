@@ -15,6 +15,8 @@ interface WatchLaterVideo {
   timestamp: string;
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
 export default function WatchLaterPage() {
   const [videos, setVideos] = useState<WatchLaterVideo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,7 @@ export default function WatchLaterPage() {
     }
     
     try {
-      const res = await fetch(`http://localhost:5000/api/watchlater/${userId}`);
+      const res = await fetch(`${BACKEND_URL}/api/watchlater/${userId}`);
       const data = await res.json();
       setVideos(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -43,7 +45,7 @@ export default function WatchLaterPage() {
 
   const removeFromWatchLater = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/watchlater/${id}`, {
+      const res = await fetch(`${BACKEND_URL}/api/watchlater/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -60,7 +62,7 @@ export default function WatchLaterPage() {
     
     if (confirm("Remove all videos from Watch Later?")) {
       try {
-        const res = await fetch(`http://localhost:5000/api/watchlater/clear/${userId}`, {
+        const res = await fetch(`${BACKEND_URL}/api/watchlater/clear/${userId}`, {
           method: "DELETE",
         });
         if (res.ok) {

@@ -53,6 +53,8 @@ const getSampleChannelData = (id: string): ChannelData => {
   };
 };
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
 export default function ChannelPage() {
   const params = useParams();
   const channelId = params?.id as string || "1";
@@ -67,8 +69,8 @@ export default function ChannelPage() {
   const fetchVideos = async () => {
     try {
       const userId = channelId || "1";
-      // HARDCODED URL - THIS WORKS
-      const res = await fetch(`http://localhost:5000/api/upload/user/${userId}`);
+      // Use configured Backend URL
+      const res = await fetch(`${BACKEND_URL}/api/upload/user/${userId}`);
       
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
