@@ -39,4 +39,21 @@ router.put("/like/:id", async (req, res) => {
   }
 });
 
+router.put("/dislike/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+    const comment = await Comment.findById(id);
+    
+    if (comment.dislikes.includes(userId)) {
+      await comment.updateOne({ $pull: { dislikes: userId } });
+    } else {
+      await comment.updateOne({ $push: { dislikes: userId }, $pull: { likes: userId } });
+    }
+    res.json({ message: "Success" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

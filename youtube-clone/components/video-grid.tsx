@@ -83,14 +83,23 @@ const sampleVideos: Video[] = [
 ];
 
 const VideoGrid = () => {
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setTimeout(() => {
-      setVideos(sampleVideos);
-      setLoading(false);
-    }, 500);
+    const fetchVideos = async () => {
+      try {
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+        const res = await fetch(`${BACKEND_URL}/api/videos`);
+        const data = await res.json();
+        setVideos(data);
+      } catch (error) {
+        console.error("Error fetching videos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchVideos();
   }, []);
 
   if (loading) {
@@ -100,26 +109,26 @@ const VideoGrid = () => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {videos.map((video) => (
-        <Link key={video.id} href={`/watch/${video.id}`} className="group">
+        <Link key={video._id} href={`/watch/${video._id}`} className="group">
           <div className="flex flex-col gap-2">
             <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
               <Image
-                src={video.thumbnail}
+                src={video.thumbnail || "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400"}
                 alt={video.title}
                 fill
                 className="object-cover group-hover:scale-105 transition duration-300"
                 sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
               />
               <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
-                {video.duration}
+                {video.duration || "00:00"}
               </span>
             </div>
 
             <div className="flex gap-3">
               <div className="flex-shrink-0">
                 <Image
-                  src={video.channelAvatar}
-                  alt={video.channel}
+                  src={video.channelAvatar || "https://ui-avatars.com/api/?name=User&background=3498DB&color=fff&size=32"}
+                  alt={video.channel || "User"}
                   width={36}
                   height={36}
                   className="rounded-full object-cover"
@@ -132,12 +141,12 @@ const VideoGrid = () => {
                   {video.title}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
-                  {video.channel}
+                  {video.channel || "User"}
                 </p>
                 <div className="flex gap-1 text-sm text-gray-600">
-                  <span>{video.views}</span>
+                  <span>{video.views || 0} views</span>
                   <span>•</span>
-                  <span>{video.timestamp}</span>
+                  <span>{video.createdAt ? new Date(video.createdAt).toLocaleDateString() : "Recently"}</span>
                 </div>
               </div>
             </div>

@@ -79,6 +79,10 @@ export const AuthProvider = ({ children }) => {
     try {
       await signOut(auth);
       setDbUser(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("userId");
+        localStorage.removeItem("username");
+      }
       console.log("✅ User signed out");
     } catch (error) {
       console.error("Sign Out Error:", error);
@@ -102,6 +106,10 @@ export const AuthProvider = ({ children }) => {
       setUser(firebaseUser);
       
       if (firebaseUser) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("userId", firebaseUser.uid);
+          localStorage.setItem("username", firebaseUser.displayName || "User");
+        }
         try {
           const userData = await getUserWithChannel(firebaseUser.uid);
           if (userData) {
@@ -114,6 +122,10 @@ export const AuthProvider = ({ children }) => {
         }
       } else {
         setDbUser(null);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("userId");
+          localStorage.removeItem("username");
+        }
       }
       
       setLoading(false);
