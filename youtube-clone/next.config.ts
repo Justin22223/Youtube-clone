@@ -16,6 +16,13 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
       {
+        // Render.com backend — allows any subdomain like youtube-clone-backend-xxxx.onrender.com
+        protocol: "https",
+        hostname: "**.onrender.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
         protocol: "https",
         hostname: "api.dicebear.com",
         port: "",
