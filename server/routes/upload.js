@@ -1,12 +1,11 @@
 import express from "express";
 import multer from "multer";
-import { GridFsStorage } from "multer-gridfs-storage";
 import mongoose from "mongoose";
 import { ObjectId } from "mongodb";
 
 const router = express.Router();
 
-// Define Video Schema (inline to avoid circular import issues)
+// ── Video Schema ──────────────────────────────────────────────────────────────
 const videoSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, default: "" },
@@ -18,69 +17,69 @@ const videoSchema = new mongoose.Schema({
   views: { type: Number, default: 0 },
   likes: [{ type: String }],
   dislikes: [{ type: String }],
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
 });
 
 const Video = mongoose.models.Video || mongoose.model("Video", videoSchema);
 
-// ── GridFS Storage ────────────────────────────────────────────────────────────
-const DB_URL = process.env.DB_URL;
-
-const storage = new GridFsStorage({
-  url: DB_URL,
-  options: { useNewUrlParser: true, useUnifiedTopology: true },
-  file: (req, file) => {
-    return {
-      bucketName: file.fieldname === "thumbnail" ? "thumbnails" : "videos",
-      filename: `${Date.now()}-${file.originalname.replace(/\s+/g, "_")}`,
-      metadata: {
-        originalname: file.originalname,
-        mimetype: file.mimetype,
-        uploadedBy: req.body?.userId || "unknown",
-      },
-    };
-  },
-});
-
+// ── Multer — memory storage (we stream to GridFS manually) ────────────────────
 const upload = multer({
-  storage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
-  fileFilter: (req, file, cb) => {
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
+  fileFilter: (_req, file, cb) => {
     if (file.fieldname === "thumbnail") {
       const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-      if (allowed.includes(file.mimetype)) return cb(null, true);
-      return cb(new Error("Invalid image type. Only JPEG, PNG, WebP and GIF are allowed."));
-    } else {
-      const allowed = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"];
-      if (allowed.includes(file.mimetype)) return cb(null, true);
-      return cb(new Error("Invalid video type. Only MP4, WebM, MOV and AVI are allowed."));
+      return allowed.includes(file.mimetype)
+        ? cb(null, true)
+        : cb(new Error("Invalid image type. Only JPEG, PNG, WebP and GIF are allowed."));
     }
+    const allowed = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"];
+    return allowed.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error("Invalid video type. Only MP4, WebM, MOV and AVI are allowed."));
   },
 });
 
-// ── Helper: build the absolute URL for a GridFS file ────────────────────────
-const buildFileUrl = (req, fileId, type = "video") => {
-  const base = `${req.protocol}://${req.get("host")}`;
-  return `${base}/api/upload/stream/${fileId}?type=${type}`;
+// ── GridFS helpers ────────────────────────────────────────────────────────────
+
+/** Upload a buffer into a GridFS bucket, resolve with the inserted ObjectId */
+const uploadToGridFS = (bucketName, buffer, filename, mimetype) =>
+  new Promise((resolve, reject) => {
+    const db = mongoose.connection.db;
+    const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName });
+    const uploadStream = bucket.openUploadStream(filename, {
+      metadata: { mimetype },
+    });
+    uploadStream.on("error", reject);
+    uploadStream.on("finish", () => resolve(uploadStream.id));
+    uploadStream.end(buffer);
+  });
+
+/** Build the absolute stream URL for a GridFS file */
+const streamUrl = (req, fileId, type) =>
+  `${req.protocol}://${req.get("host")}/api/upload/stream/${fileId}?type=${type}`;
+
+/** Extract ObjectId from a stream URL like …/stream/<id>?type=… */
+const idFromUrl = (url) => {
+  try {
+    const u = new URL(url);
+    const id = u.pathname.split("/stream/")[1];
+    return id && ObjectId.isValid(id) ? new ObjectId(id) : null;
+  } catch {
+    return null;
+  }
 };
 
-// ── Helper: format a saved video document URLs ──────────────────────────────
-const formatVideoUrls = (video, req) => {
-  if (!video) return null;
-  const obj = video.toObject ? video.toObject() : { ...video };
-  // videoUrl and thumbnail are already absolute https:// URLs from our upload handler
-  return obj;
-};
+// ── ROUTES ───────────────────────────────────────────────────────────────────
 
-// ────────────────────────────────────────────────────────────────────────────
-// ROUTES
-// ────────────────────────────────────────────────────────────────────────────
-
-// GET  /api/upload/stream/:fileId  – stream a file from GridFS
+/**
+ * GET /api/upload/stream/:fileId?type=video|thumbnail
+ * Stream a file from GridFS (supports HTTP Range for video seeking).
+ */
 router.get("/stream/:fileId", async (req, res) => {
   try {
     const { fileId } = req.params;
-    const { type = "video" } = req.query;
+    const type = req.query.type === "thumbnail" ? "thumbnail" : "video";
 
     if (!ObjectId.isValid(fileId)) {
       return res.status(400).json({ error: "Invalid file ID" });
@@ -89,24 +88,23 @@ router.get("/stream/:fileId", async (req, res) => {
     const db = mongoose.connection.db;
     const bucketName = type === "thumbnail" ? "thumbnails" : "videos";
     const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName });
+    const oid = new ObjectId(fileId);
 
-    // Look up the file metadata first so we can set the right Content-Type
-    const files = await bucket.find({ _id: new ObjectId(fileId) }).toArray();
-    if (!files || files.length === 0) {
-      return res.status(404).json({ error: "File not found" });
-    }
+    // Fetch file metadata
+    const files = await bucket.find({ _id: oid }).toArray();
+    if (!files.length) return res.status(404).json({ error: "File not found" });
 
     const file = files[0];
-    const contentType = file.metadata?.mimetype || (type === "thumbnail" ? "image/jpeg" : "video/mp4");
-
-    // Support range requests so browsers can seek in videos
+    const contentType =
+      file.metadata?.mimetype ||
+      (type === "thumbnail" ? "image/jpeg" : "video/mp4");
     const fileSize = file.length;
-    const range = req.headers.range;
 
+    const range = req.headers.range;
     if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const [startStr, endStr] = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(startStr, 10);
+      const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
       const chunkSize = end - start + 1;
 
       res.writeHead(206, {
@@ -115,12 +113,7 @@ router.get("/stream/:fileId", async (req, res) => {
         "Content-Length": chunkSize,
         "Content-Type": contentType,
       });
-
-      const downloadStream = bucket.openDownloadStream(new ObjectId(fileId), {
-        start,
-        end: end + 1,
-      });
-      downloadStream.pipe(res);
+      bucket.openDownloadStream(oid, { start, end: end + 1 }).pipe(res);
     } else {
       res.writeHead(200, {
         "Content-Length": fileSize,
@@ -128,28 +121,33 @@ router.get("/stream/:fileId", async (req, res) => {
         "Accept-Ranges": "bytes",
         "Cache-Control": "public, max-age=31536000",
       });
-      const downloadStream = bucket.openDownloadStream(new ObjectId(fileId));
-      downloadStream.pipe(res);
+      bucket.openDownloadStream(oid).pipe(res);
     }
-  } catch (error) {
-    console.error("Stream error:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("Stream error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// GET  /api/upload/user/:userId  – list videos for a user
+/**
+ * GET /api/upload/user/:userId
+ * List all videos uploaded by a user.
+ */
 router.get("/user/:userId", async (req, res) => {
   try {
     const videos = await Video.find({ userId: req.params.userId }).sort({ createdAt: -1 });
-    const formatted = videos.map((v) => formatVideoUrls(v, req));
-    res.json(formatted);
-  } catch (error) {
-    console.error("Error fetching user videos:", error);
-    res.status(500).json({ error: error.message });
+    res.json(videos.map((v) => v.toObject()));
+  } catch (err) {
+    console.error("Error fetching user videos:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/upload/video  – upload video (+ optional thumbnail) → GridFS → MongoDB
+/**
+ * POST /api/upload/video
+ * Upload a video (+ optional auto-generated thumbnail) and save metadata to MongoDB.
+ * Files are stored in MongoDB Atlas GridFS — never on disk.
+ */
 router.post(
   "/video",
   upload.fields([
@@ -163,20 +161,28 @@ router.post(
       const videoFile = req.files?.video?.[0] || null;
       const thumbnailFile = req.files?.thumbnail?.[0] || null;
 
-      if (!videoFile) {
-        return res.status(400).json({ error: "No video file uploaded" });
-      }
-      if (!title?.trim()) {
-        return res.status(400).json({ error: "Title is required" });
-      }
+      if (!videoFile) return res.status(400).json({ error: "No video file uploaded" });
+      if (!title?.trim()) return res.status(400).json({ error: "Title is required" });
 
-      // Build permanent stream URLs using the GridFS file IDs
-      const base = `${req.protocol}://${req.get("host")}`;
-      const videoUrl = `${base}/api/upload/stream/${videoFile.id}?type=video`;
+      // Upload video to GridFS
+      const videoFileId = await uploadToGridFS(
+        "videos",
+        videoFile.buffer,
+        `${Date.now()}-${videoFile.originalname.replace(/\s+/g, "_")}`,
+        videoFile.mimetype
+      );
+      const videoUrl = streamUrl(req, videoFileId, "video");
 
-      let thumbnail = "";
+      // Upload thumbnail to GridFS (if provided), else use UI-Avatars placeholder
+      let thumbnail;
       if (thumbnailFile) {
-        thumbnail = `${base}/api/upload/stream/${thumbnailFile.id}?type=thumbnail`;
+        const thumbFileId = await uploadToGridFS(
+          "thumbnails",
+          thumbnailFile.buffer,
+          `thumb-${Date.now()}.jpg`,
+          thumbnailFile.mimetype
+        );
+        thumbnail = streamUrl(req, thumbFileId, "thumbnail");
       } else {
         thumbnail = `https://ui-avatars.com/api/?name=${encodeURIComponent(title)}&background=random&color=fff&size=320`;
       }
@@ -197,29 +203,32 @@ router.post(
       await video.save();
       console.log("✅ Video saved to MongoDB:", video._id);
 
-      res.status(201).json({
-        message: "Video uploaded successfully",
-        video: video.toObject(),
-      });
-    } catch (error) {
-      console.error("❌ Upload error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(201).json({ message: "Video uploaded successfully", video: video.toObject() });
+    } catch (err) {
+      console.error("❌ Upload error:", err);
+      res.status(500).json({ error: err.message });
     }
   }
 );
 
-// GET  /api/upload/video/:videoId  – get a single video
+/**
+ * GET /api/upload/video/:videoId
+ * Retrieve a single video document.
+ */
 router.get("/video/:videoId", async (req, res) => {
   try {
     const video = await Video.findById(req.params.videoId);
     if (!video) return res.status(404).json({ error: "Video not found" });
-    res.json(formatVideoUrls(video, req));
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json(video.toObject());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// DELETE /api/upload/video/:videoId  – delete video + its GridFS files
+/**
+ * DELETE /api/upload/video/:videoId
+ * Delete a video and its associated GridFS files.
+ */
 router.delete("/video/:videoId", async (req, res) => {
   try {
     const video = await Video.findById(req.params.videoId);
@@ -227,33 +236,22 @@ router.delete("/video/:videoId", async (req, res) => {
 
     const db = mongoose.connection.db;
 
-    // Delete video file from GridFS
-    const extractId = (url) => {
-      try {
-        const u = new URL(url);
-        const id = u.pathname.split("/stream/")[1];
-        return id && ObjectId.isValid(id) ? new ObjectId(id) : null;
-      } catch {
-        return null;
-      }
-    };
-
-    const videoFileId = extractId(video.videoUrl);
-    const thumbnailFileId = extractId(video.thumbnail);
-
+    const videoFileId = idFromUrl(video.videoUrl);
     if (videoFileId) {
-      const videoBucket = new mongoose.mongo.GridFSBucket(db, { bucketName: "videos" });
-      await videoBucket.delete(videoFileId).catch(() => {});
+      const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: "videos" });
+      await bucket.delete(videoFileId).catch(() => {});
     }
-    if (thumbnailFileId) {
-      const thumbBucket = new mongoose.mongo.GridFSBucket(db, { bucketName: "thumbnails" });
-      await thumbBucket.delete(thumbnailFileId).catch(() => {});
+
+    const thumbFileId = idFromUrl(video.thumbnail);
+    if (thumbFileId) {
+      const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: "thumbnails" });
+      await bucket.delete(thumbFileId).catch(() => {});
     }
 
     await Video.findByIdAndDelete(req.params.videoId);
     res.json({ message: "Video deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
