@@ -7,10 +7,10 @@ services:
     rootDir: server
     envVars:
       - key: PORT
-        value: 5000
+        value: 10000
       - key: DB_URL
-        value: mongodb+srv://admin:admin@cluster0.0gf7bjg.mongodb.net/youtube?appName=Cluster0
+        value: mongodb+srv://admin:admin@db.qbruw7s.mongodb.net/?appName=db
       - key: JWT_SECRET
         value: supersecretjwtkeychangeinprod
       - key: FRONTEND_URL
-        value: http://localhost:3000
+        value: https://youtube-clone-justinfernandes.vercel.app
