@@ -46,38 +46,34 @@ const LANGUAGES_LIST = [
 ];
 
 // Helper to fetch user's city with multiple API fallbacks
+const fetchWithTimeout = async (url: string, timeoutMs = 3000): Promise<Response> => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+};
+
 const getUserCityWithFallbacks = async (): Promise<string> => {
-  // 1. Try ipapi.co
-  try {
-    const res = await fetch("https://ipapi.co/json/");
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.city) return data.city;
-    }
-  } catch (err) {
-    console.warn("ipapi.co failed, attempting ipwho.is", err);
-  }
+  const apis = [
+    "https://ipwho.is/",
+    "https://ipapi.co/json/",
+    "https://ipinfo.io/json",
+  ];
 
-  // 2. Try ipwho.is
-  try {
-    const res = await fetch("https://ipwho.is/");
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.city) return data.city;
+  for (const url of apis) {
+    try {
+      const res = await fetchWithTimeout(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.city) return data.city;
+      }
+    } catch {
+      // Silently try next API
     }
-  } catch (err) {
-    console.warn("ipwho.is failed, attempting ipinfo.io", err);
-  }
-
-  // 3. Try ipinfo.io
-  try {
-    const res = await fetch("https://ipinfo.io/json");
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.city) return data.city;
-    }
-  } catch (err) {
-    console.warn("ipinfo.io failed. Falling back to default.");
   }
 
   return "Unknown City";
