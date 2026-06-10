@@ -1,9 +1,7 @@
 import axios from "axios";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+import { getBackendUrl } from "./utils";
 
 const axiosInstance = axios.create({
-  baseURL: BACKEND_URL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -13,6 +11,7 @@ const axiosInstance = axios.create({
 // Request interceptor to add auth token
 axiosInstance.interceptors.request.use(
   (config) => {
+    config.baseURL = getBackendUrl();
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

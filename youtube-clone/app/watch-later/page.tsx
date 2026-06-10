@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Clock, Trash2 } from "lucide-react";
+import { getBackendUrl, getImageUrl } from "@/lib/utils";
 
 interface WatchLaterVideo {
   _id: string;
@@ -15,9 +16,8 @@ interface WatchLaterVideo {
   timestamp: string;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-
 export default function WatchLaterPage() {
+  const BACKEND_URL = getBackendUrl();
   const [videos, setVideos] = useState<WatchLaterVideo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -135,7 +135,14 @@ export default function WatchLaterPage() {
                 <Link href={`/watch/${video.videoId}`} className="flex gap-4 flex-1">
                   <div className="relative w-40 flex-shrink-0">
                     <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
-                      <img src={video.thumbnail} alt={video.title} className="object-cover w-full h-full group-hover:scale-105 transition" />
+                      <img
+                        src={getImageUrl(video.thumbnail)}
+                        alt={video.title}
+                        className="object-cover w-full h-full group-hover:scale-105 transition"
+                        onError={(e) => {
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400";
+                        }}
+                      />
                     </div>
                     <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
                       {video.duration}

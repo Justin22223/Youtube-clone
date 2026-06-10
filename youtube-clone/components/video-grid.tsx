@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { getImageUrl, getBackendUrl } from "@/lib/utils";
 
 interface Video {
   id: string;
@@ -89,8 +90,8 @@ const VideoGrid = () => {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-        const res = await fetch(`${BACKEND_URL}/api/videos`);
+        const backendUrl = getBackendUrl();
+        const res = await fetch(`${backendUrl}/api/videos`);
         const data = await res.json();
         setVideos(data);
       } catch (error) {
@@ -112,12 +113,13 @@ const VideoGrid = () => {
         <Link key={video._id} href={`/watch/${video._id}`} className="group">
           <div className="flex flex-col gap-2">
             <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-              <Image
-                src={video.thumbnail || "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400"}
+              <img
+                src={getImageUrl(video.thumbnail)}
                 alt={video.title}
-                fill
-                className="object-cover group-hover:scale-105 transition duration-300"
-                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                onError={(e) => {
+                  e.currentTarget.src = "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400";
+                }}
               />
               <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
                 {video.duration || "00:00"}

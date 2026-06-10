@@ -6,7 +6,7 @@ export const getComments = async (req, res) => {
     const { videoId } = req.params;
     const comments = await Comment.find({ videoId, parentCommentId: null })
       .sort({ createdAt: -1 });
-    
+
     // Get replies for each comment
     const commentsWithReplies = await Promise.all(
       comments.map(async (comment) => {
@@ -15,7 +15,7 @@ export const getComments = async (req, res) => {
         return { ...comment.toObject(), replies };
       })
     );
-    
+
     res.status(200).json(commentsWithReplies);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -25,25 +25,31 @@ export const getComments = async (req, res) => {
 // Add a comment
 export const addComment = async (req, res) => {
   try {
-    const { videoId, userId, username, userAvatar, text, parentCommentId } = req.body;
-    
+    const { videoId, userId, username, userAvatar, city, text, parentCommentId } = req.body;
+
+    const specialCharsRegex = /[@#$%^&*<>{}[\]|\\~]/;
+    if (specialCharsRegex.test(text)) {
+      return res.status(400).json({ message: "Comment contains special characters which are not allowed." });
+    }
+
     const newComment = new Comment({
       videoId,
       userId,
       username,
       userAvatar: userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&size=40`,
+      city: city || "Unknown City",
       text,
       parentCommentId: parentCommentId || null,
     });
-    
+
     await newComment.save();
-    
+
     if (parentCommentId) {
       await Comment.findByIdAndUpdate(parentCommentId, {
         $push: { replies: newComment._id }
       });
     }
-    
+
     res.status(201).json(newComment);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -55,11 +61,11 @@ export const likeComment = async (req, res) => {
   try {
     const { id } = req.params;
     const { userId } = req.body;
-    
+
     const comment = await Comment.findById(id);
     const hasLiked = comment.likes.includes(userId);
     const hasDisliked = comment.dislikes.includes(userId);
-    
+
     if (hasLiked) {
       await comment.updateOne({ $pull: { likes: userId } });
     } else {
@@ -69,7 +75,7 @@ export const likeComment = async (req, res) => {
       }
       await comment.updateOne(update);
     }
-    
+
     res.status(200).json({ message: "Success" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -81,11 +87,11 @@ export const dislikeComment = async (req, res) => {
   try {
     const { id } = req.params;
     const { userId } = req.body;
-    
+
     const comment = await Comment.findById(id);
     const hasDisliked = comment.dislikes.includes(userId);
     const hasLiked = comment.likes.includes(userId);
-    
+
     if (hasDisliked) {
       await comment.updateOne({ $pull: { dislikes: userId } });
     } else {
@@ -94,8 +100,20 @@ export const dislikeComment = async (req, res) => {
         update.$pull = { likes: userId };
       }
       await comment.updateOne(update);
+
+      const updatedComment = await Comment.findById(id);
+      if (updatedComment.dislikes.length >= 2) {
+        if (updatedComment.parentCommentId) {
+          await Comment.findByIdAndUpdate(updatedComment.parentCommentId, {
+            $pull: { replies: id }
+          });
+        }
+        await Comment.deleteMany({ parentCommentId: id });
+        await Comment.findByIdAndDelete(id);
+        return res.status(200).json({ message: "Comment removed due to too many dislikes", removed: true });
+      }
     }
-    
+
     res.status(200).json({ message: "Success" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -107,16 +125,16 @@ export const deleteComment = async (req, res) => {
   try {
     const { id } = req.params;
     const comment = await Comment.findById(id);
-    
+
     if (comment.parentCommentId) {
       await Comment.findByIdAndUpdate(comment.parentCommentId, {
         $pull: { replies: id }
       });
     }
-    
+
     await Comment.deleteMany({ parentCommentId: id });
     await Comment.findByIdAndDelete(id);
-    
+
     res.status(200).json({ message: "Comment deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });

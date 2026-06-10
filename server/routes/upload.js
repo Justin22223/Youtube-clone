@@ -13,12 +13,16 @@ const router = express.Router();
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, "../uploads");
 const videosDir = path.join(uploadDir, "videos");
+const thumbnailsDir = path.join(uploadDir, "thumbnails");
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 if (!fs.existsSync(videosDir)) {
   fs.mkdirSync(videosDir, { recursive: true });
+}
+if (!fs.existsSync(thumbnailsDir)) {
+  fs.mkdirSync(thumbnailsDir, { recursive: true });
 }
 
 // Define Video Schema
@@ -28,6 +32,8 @@ const videoSchema = new mongoose.Schema({
   videoUrl: { type: String, required: true },
   thumbnail: { type: String, default: "" },
   userId: { type: String, required: true },
+  duration: { type: String, default: "00:00" },
+  visibility: { type: String, enum: ["public", "unlisted", "private"], default: "public" },
   views: { type: Number, default: 0 },
   likes: [{ type: String }],
   dislikes: [{ type: String }],
@@ -40,7 +46,11 @@ const Video = mongoose.models.Video || mongoose.model('Video', videoSchema);
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, videosDir);
+    if (file.fieldname === "thumbnail") {
+      cb(null, thumbnailsDir);
+    } else {
+      cb(null, videosDir);
+    }
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -52,14 +62,38 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
+    if (file.fieldname === "thumbnail") {
+      const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (allowedImageTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid image type for thumbnail. Only JPEG, PNG, and WebP are allowed.'));
+      }
     } else {
-      cb(new Error('Invalid file type. Only MP4, WebM, and MOV are allowed.'));
+      const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
+      if (allowedVideoTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only MP4, WebM, and MOV are allowed.'));
+      }
     }
   }
 });
+
+// Helper to format relative video and thumbnail paths to absolute URLs
+const formatVideoUrls = (video, req) => {
+  if (!video) return null;
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const videoObj = video.toObject ? video.toObject() : video;
+  
+  if (videoObj.videoUrl && !videoObj.videoUrl.startsWith('http')) {
+    videoObj.videoUrl = `${baseUrl}${videoObj.videoUrl}`;
+  }
+  if (videoObj.thumbnail && !videoObj.thumbnail.startsWith('http')) {
+    videoObj.thumbnail = `${baseUrl}${videoObj.thumbnail}`;
+  }
+  return videoObj;
+};
 
 // ============ ROUTES ============
 
@@ -67,7 +101,8 @@ const upload = multer({
 router.get('/user/:userId', async (req, res) => {
   try {
     const videos = await Video.find({ userId: req.params.userId }).sort({ createdAt: -1 });
-    res.json(videos);
+    const formattedVideos = videos.map(video => formatVideoUrls(video, req));
+    res.json(formattedVideos);
   } catch (error) {
     console.error("Error fetching user videos:", error);
     res.status(500).json({ error: error.message });
@@ -75,14 +110,18 @@ router.get('/user/:userId', async (req, res) => {
 });
 
 // POST upload video
-router.post('/video', upload.single('video'), async (req, res) => {
+router.post('/video', upload.fields([
+  { name: 'video', maxCount: 1 },
+  { name: 'thumbnail', maxCount: 1 }
+]), async (req, res) => {
   try {
     console.log("Upload request received");
     console.log("Body:", req.body);
-    console.log("File:", req.file);
+    console.log("Files:", req.files);
     
-    const { title, description, userId, visibility } = req.body;
-    const videoFile = req.file;
+    const { title, description, userId, visibility, duration } = req.body;
+    const videoFile = req.files && req.files['video'] ? req.files['video'][0] : null;
+    const thumbnailFile = req.files && req.files['thumbnail'] ? req.files['thumbnail'][0] : null;
     
     if (!videoFile) {
       return res.status(400).json({ error: "No video file uploaded" });
@@ -95,8 +134,13 @@ router.post('/video', upload.single('video'), async (req, res) => {
     // Create video URL
     const videoUrl = `/uploads/videos/${videoFile.filename}`;
     
-    // Create thumbnail URL (using UI Avatars as placeholder)
-    const thumbnail = `https://ui-avatars.com/api/?name=${encodeURIComponent(title)}&background=random&color=fff&size=320`;
+    // Set thumbnail URL
+    let thumbnail = "";
+    if (thumbnailFile) {
+      thumbnail = `/uploads/thumbnails/${thumbnailFile.filename}`;
+    } else {
+      thumbnail = `https://ui-avatars.com/api/?name=${encodeURIComponent(title)}&background=random&color=fff&size=320`;
+    }
     
     const video = new Video({
       title: title.trim(),
@@ -104,6 +148,8 @@ router.post('/video', upload.single('video'), async (req, res) => {
       videoUrl: videoUrl,
       thumbnail: thumbnail,
       userId: userId || "1",
+      duration: duration || "00:00",
+      visibility: visibility || "public",
       views: 0,
       likes: [],
       dislikes: []
@@ -112,9 +158,18 @@ router.post('/video', upload.single('video'), async (req, res) => {
     await video.save();
     console.log("Video saved:", video._id);
     
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const videoObj = video.toObject();
+    if (videoObj.videoUrl && !videoObj.videoUrl.startsWith('http')) {
+      videoObj.videoUrl = `${baseUrl}${videoObj.videoUrl}`;
+    }
+    if (videoObj.thumbnail && !videoObj.thumbnail.startsWith('http')) {
+      videoObj.thumbnail = `${baseUrl}${videoObj.thumbnail}`;
+    }
+
     res.status(201).json({ 
       message: "Video uploaded successfully", 
-      video: video 
+      video: videoObj 
     });
   } catch (error) {
     console.error("Upload error:", error);
@@ -129,7 +184,7 @@ router.get('/video/:videoId', async (req, res) => {
     if (!video) {
       return res.status(404).json({ error: "Video not found" });
     }
-    res.json(video);
+    res.json(formatVideoUrls(video, req));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

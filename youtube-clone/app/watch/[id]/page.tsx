@@ -3,6 +3,8 @@
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Check, Clock, CheckCheck } from "lucide-react";
+import Comments from "@/components/comments";
+import { getBackendUrl, getVideoUrl } from "@/lib/utils";
 
 const getAvatarColor = (name: string) => {
   if (!name) return '3498DB';
@@ -34,11 +36,10 @@ const formatDate = (dateString: string) => {
   }
 };
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-
 export default function WatchPage() {
   const params = useParams();
   const videoId = params.id as string;
+  const BACKEND_URL = getBackendUrl();
   const [video, setVideo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
@@ -51,8 +52,6 @@ export default function WatchPage() {
   const [isInWatchLater, setIsInWatchLater] = useState(false);
   const [watchLaterId, setWatchLaterId] = useState(null);
   
-  const [comments, setComments] = useState<any[]>([]);
-  const [comment, setComment] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
 
@@ -153,20 +152,9 @@ export default function WatchPage() {
     }
   };
 
-  const fetchComments = async () => {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/comments/${videoId}`);
-      const data = await res.json();
-      setComments(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-    }
-  };
-
   useEffect(() => {
     if (videoId) {
       fetchLikeStatus();
-      fetchComments();
       checkWatchLater();
     }
   }, [videoId]);
@@ -217,74 +205,7 @@ export default function WatchPage() {
     }
   };
 
-  const handleAddComment = async () => {
-    if (!comment.trim()) return;
-    
-    const userId = localStorage.getItem("userId");
-    const username = localStorage.getItem("username") || "User";
-    
-    if (!userId) {
-      alert("Please login to comment");
-      return;
-    }
-    
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          videoId,
-          userId,
-          username,
-          text: comment,
-          parentCommentId: null,
-        }),
-      });
-      const newComment = await res.json();
-      setComments([newComment, ...comments]);
-      setComment("");
-    } catch (error) {
-      console.error("Error adding comment:", error);
-    }
-  };
-
-  const handleLikeComment = async (commentId: string) => {
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
-      alert("Please login to like this comment");
-      return;
-    }
-    
-    try {
-      await fetch(`${BACKEND_URL}/api/comments/like/${commentId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      });
-      fetchComments();
-    } catch (error) {
-      console.error("Error liking comment:", error);
-    }
-  };
-
-  const handleDislikeComment = async (commentId: string) => {
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
-      alert("Please login to dislike this comment");
-      return;
-    }
-    
-    try {
-      await fetch(`${BACKEND_URL}/api/comments/dislike/${commentId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      });
-      fetchComments();
-    } catch (error) {
-      console.error("Error disliking comment:", error);
-    }
-  };
+  // Handlers for comments removed (delegated to Comments component)
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -314,10 +235,7 @@ export default function WatchPage() {
     );
   }
 
-  let videoUrl = video.videoUrl;
-  if (videoUrl && !videoUrl.startsWith('http')) {
-    videoUrl = `${BACKEND_URL}${videoUrl}`;
-  }
+  let videoUrl = getVideoUrl(video.videoUrl);
 
   return (
     <div className="min-h-screen bg-white dark:bg-black">
@@ -401,51 +319,7 @@ export default function WatchPage() {
               <p className="text-sm">{video.description}</p>
             </div>
 
-            <div className="mt-8">
-              <h3 className="font-semibold text-lg mb-4">Comments ({comments.length})</h3>
-              
-              <div className="flex gap-3 mb-6">
-                <img src={getAvatarUrl("You", 40)} alt="User" className="w-10 h-10 rounded-full" />
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Add a comment..."
-                    className="w-full px-0 py-2 border-b border-gray-300 bg-transparent focus:outline-none focus:border-blue-500"
-                    onKeyPress={(e) => e.key === "Enter" && handleAddComment()}
-                  />
-                  <div className="flex justify-end gap-2 mt-2">
-                    <button onClick={() => setComment("")} className="px-4 py-1.5 rounded-full text-sm font-semibold hover:bg-gray-100">Cancel</button>
-                    <button onClick={handleAddComment} disabled={!comment.trim()} className="px-4 py-1.5 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">Comment</button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {comments.map((c, index) => (
-                  <div key={c._id || `comment-${index}`} className="flex gap-3">
-                    <img src={c.userAvatar || getAvatarUrl(c.username, 40)} alt={c.username} className="w-10 h-10 rounded-full" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{c.username}</span>
-                        <span className="text-xs text-gray-500">{formatDate(c.createdAt)}</span>
-                      </div>
-                      <p className="text-sm mt-1">{c.text}</p>
-                      <div className="flex gap-4 mt-2">
-                        <button onClick={() => handleLikeComment(c._id)} className="text-xs text-gray-500 hover:text-gray-700">
-                          Like ({c.likes?.length || 0})
-                        </button>
-                        <button onClick={() => handleDislikeComment(c._id)} className="text-xs text-gray-500 hover:text-gray-700">
-                          Dislike ({c.dislikes?.length || 0})
-                        </button>
-                        <button className="text-xs text-gray-500 hover:text-gray-700">Reply</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <Comments videoId={videoId} />
           </div>
         </div>
       </div>

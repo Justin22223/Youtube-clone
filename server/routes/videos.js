@@ -4,11 +4,27 @@ import Video from "../models/video.js";
 
 const router = express.Router();
 
+// Helper to format relative video and thumbnail paths to absolute URLs
+const formatVideoUrls = (video, req) => {
+  if (!video) return null;
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const videoObj = video.toObject ? video.toObject() : video;
+  
+  if (videoObj.videoUrl && !videoObj.videoUrl.startsWith('http')) {
+    videoObj.videoUrl = `${baseUrl}${videoObj.videoUrl}`;
+  }
+  if (videoObj.thumbnail && !videoObj.thumbnail.startsWith('http')) {
+    videoObj.thumbnail = `${baseUrl}${videoObj.thumbnail}`;
+  }
+  return videoObj;
+};
+
 // Get all videos
 router.get("/", async (req, res) => {
   try {
     const videos = await Video.find({ visibility: "public" }).sort({ createdAt: -1 });
-    res.status(200).json(videos);
+    const formattedVideos = videos.map(video => formatVideoUrls(video, req));
+    res.status(200).json(formattedVideos);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -26,7 +42,7 @@ router.get("/:id", async (req, res) => {
     
     const video = await Video.findById(id);
     if (!video) return res.status(404).json({ message: "Video not found" });
-    res.status(200).json(video);
+    res.status(200).json(formatVideoUrls(video, req));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -36,7 +52,8 @@ router.get("/:id", async (req, res) => {
 router.get("/user/:userId", async (req, res) => {
   try {
     const videos = await Video.find({ userId: req.params.userId }).sort({ createdAt: -1 });
-    res.status(200).json(videos);
+    const formattedVideos = videos.map(video => formatVideoUrls(video, req));
+    res.status(200).json(formattedVideos);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

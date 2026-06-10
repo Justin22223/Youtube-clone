@@ -13,6 +13,7 @@ import {
   Home,
   Upload
 } from "lucide-react";
+import { getBackendUrl } from "@/lib/utils";
 
 interface ChannelData {
   id: string;
@@ -53,11 +54,10 @@ const getSampleChannelData = (id: string): ChannelData => {
   };
 };
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-
 export default function ChannelPage() {
   const params = useParams();
   const channelId = params?.id as string || "1";
+  const BACKEND_URL = getBackendUrl();
   
   const [channel, setChannel] = useState<ChannelData | null>(null);
   const [isLoading, setIsLoading] = useState(true);

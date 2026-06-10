@@ -53,7 +53,7 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000;
 const DB_URL = process.env.DB_URL;
 
-const directUrlFallback = "mongodb://admin:admin@ac-tn0jhd4-shard-00-00.0gf7bjg.mongodb.net:27017,ac-tn0jhd4-shard-00-01.0gf7bjg.mongodb.net:27017,ac-tn0jhd4-shard-00-02.0gf7bjg.mongodb.net:27017/youtube?ssl=true&replicaSet=atlas-11gsr9-shard-0&authSource=admin&appName=Cluster0";
+const directUrlFallback = "mongodb://admin:admin@ac-a2gjngl-shard-00-00.qbruw7s.mongodb.net:27017,ac-a2gjngl-shard-00-01.qbruw7s.mongodb.net:27017,ac-a2gjngl-shard-00-02.qbruw7s.mongodb.net:27017/youtube?ssl=true&replicaSet=atlas-537it5-shard-0&authSource=admin&appName=db";
 
 const connectWithRetry = (url, isFallback = false) => {
   mongoose

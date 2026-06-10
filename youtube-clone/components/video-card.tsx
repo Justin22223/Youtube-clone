@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getImageUrl } from "@/lib/utils";
 
 interface VideoProps {
   video: {
@@ -20,12 +21,13 @@ const VideoCard = ({ video }: VideoProps) => {
       <div className="flex flex-col gap-2">
         {/* Thumbnail */}
         <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-          <Image
-            src={video.thumbnail}
+          <img
+            src={getImageUrl(video.thumbnail)}
             alt={video.title}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              e.currentTarget.src = "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400";
+            }}
           />
           <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
             {video.duration}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { getImageUrl } from "@/lib/utils";
 import { 
   ThumbsUp, 
   Trash2, 
@@ -407,12 +408,13 @@ const LikedVideoRow = ({ video, onRemove, onItemClick, compact = false }: LikedV
       >
         <div className="relative w-32 flex-shrink-0">
           <div className="aspect-video bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden">
-            <Image
-              src={video.thumbnail}
+            <img
+              src={getImageUrl(video.thumbnail)}
               alt={video.title}
-              width={128}
-              height={72}
               className="object-cover w-full h-full group-hover:scale-105 transition"
+              onError={(e) => {
+                e.currentTarget.src = "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400";
+              }}
             />
           </div>
           <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
@@ -439,12 +441,13 @@ const LikedVideoRow = ({ video, onRemove, onItemClick, compact = false }: LikedV
       <Link href={`/watch/${video.id}`} onClick={onItemClick} className="flex gap-4 flex-1">
         <div className="relative w-40 flex-shrink-0">
           <div className="aspect-video bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden">
-            <Image
-              src={video.thumbnail}
+            <img
+              src={getImageUrl(video.thumbnail)}
               alt={video.title}
-              width={160}
-              height={90}
               className="object-cover w-full h-full group-hover:scale-105 transition"
+              onError={(e) => {
+                e.currentTarget.src = "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400";
+              }}
             />
           </div>
           <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">

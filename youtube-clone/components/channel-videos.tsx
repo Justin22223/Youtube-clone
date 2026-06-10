@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Video as VideoIcon, Trash2, Search, X, AlertCircle } from "lucide-react";
+import { getImageUrl } from "@/lib/utils";
 
 interface Video {
   _id?: string;
@@ -90,9 +91,12 @@ const ChannelVideos = ({
               <Link href={`/watch/${videoId}`}>
                 <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-100">
                   <img 
-                    src={video.thumbnail || "https://via.placeholder.com/640x360"} 
+                    src={getImageUrl(video.thumbnail)} 
                     alt={video.title} 
                     className="object-cover w-full h-full group-hover:scale-105 transition duration-300" 
+                    onError={(e) => {
+                      e.currentTarget.src = "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400";
+                    }}
                   />
                   {video.duration && (
                     <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">

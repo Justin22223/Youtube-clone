@@ -2,6 +2,55 @@
 
 import { useState, useRef, useCallback } from "react";
 import { Upload, X, CheckCircle, AlertCircle, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { getBackendUrl } from "@/lib/utils";
+
+// Helper to capture a frame from the uploaded video file
+const captureVideoFrame = (file: File): Promise<{ blob: Blob; duration: number }> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+    const objectUrl = URL.createObjectURL(file);
+    video.src = objectUrl;
+
+    video.onloadedmetadata = () => {
+      // Seek to 1 second or 10% of duration
+      video.currentTime = Math.min(1.0, video.duration / 2);
+    };
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 360;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => {
+            URL.revokeObjectURL(objectUrl);
+            if (blob) {
+              resolve({ blob, duration: video.duration });
+            } else {
+              reject(new Error("Canvas toBlob returned null"));
+            }
+          }, "image/jpeg", 0.85);
+        } else {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Canvas context is not available"));
+        }
+      } catch (err) {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
+      }
+    };
+
+    video.onerror = (err) => {
+      URL.revokeObjectURL(objectUrl);
+      reject(err);
+    };
+  });
+};
 
 interface VideoUploaderProps {
   channelId?: string;
@@ -24,6 +73,21 @@ const VideoUploader = ({ channelId, onUploadComplete, onClose }: VideoUploaderPr
   const [isMuted, setIsMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [thumbnailBlob, setThumbnailBlob] = useState<Blob | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [duration, setDuration] = useState("00:00");
+
+  const formatDuration = (seconds: number): string => {
+    if (isNaN(seconds) || seconds === Infinity) return "00:00";
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -52,7 +116,7 @@ const VideoUploader = ({ channelId, onUploadComplete, onClose }: VideoUploaderPr
     }
   };
 
-  const validateAndSetFile = (file: File) => {
+  const validateAndSetFile = async (file: File) => {
     setError(null);
     
     const fileSizeMB = file.size / (1024 * 1024);
@@ -65,14 +129,31 @@ const VideoUploader = ({ channelId, onUploadComplete, onClose }: VideoUploaderPr
     const previewUrl = URL.createObjectURL(file);
     setVideoPreview(previewUrl);
     setStep("details");
+
+    // Capture thumbnail from video frame automatically
+    try {
+      const result = await captureVideoFrame(file);
+      setThumbnailBlob(result.blob);
+      const thumbUrl = URL.createObjectURL(result.blob);
+      setThumbnailPreview(thumbUrl);
+      setDuration(formatDuration(result.duration));
+    } catch (err) {
+      console.error("Failed to generate video thumbnail:", err);
+    }
   };
 
   const handleRemoveFile = () => {
     if (videoPreview) {
       URL.revokeObjectURL(videoPreview);
     }
+    if (thumbnailPreview) {
+      URL.revokeObjectURL(thumbnailPreview);
+    }
     setSelectedFile(null);
     setVideoPreview(null);
+    setThumbnailBlob(null);
+    setThumbnailPreview(null);
+    setDuration("00:00");
     setStep("upload");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -95,15 +176,19 @@ const VideoUploader = ({ channelId, onUploadComplete, onClose }: VideoUploaderPr
     
     const formData = new FormData();
     formData.append("video", selectedFile);
+    if (thumbnailBlob) {
+      formData.append("thumbnail", thumbnailBlob, "thumbnail.jpg");
+    }
     formData.append("title", title);
     formData.append("description", description);
     const userId = channelId || "1";
     formData.append("userId", userId);
     formData.append("visibility", visibility);
+    formData.append("duration", duration);
     
     try {
       // Use configured Backend URL
-      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+      const BACKEND_URL = getBackendUrl();
       const response = await fetch(`${BACKEND_URL}/api/upload/video`, {
         method: "POST",
         body: formData,
@@ -268,6 +353,22 @@ const VideoUploader = ({ channelId, onUploadComplete, onClose }: VideoUploaderPr
                     rows={3}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700 resize-none"
                   />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Thumbnail</label>
+                  {thumbnailPreview ? (
+                    <div className="relative w-40 aspect-video rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm">
+                      <img src={thumbnailPreview} alt="Auto-generated thumbnail" className="w-full h-full object-cover" />
+                      <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
+                        Auto-generated
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="w-40 aspect-video rounded-lg bg-gray-100 dark:bg-gray-800/50 flex items-center justify-center border border-dashed border-gray-300 dark:border-gray-700 text-xs text-gray-400 animate-pulse">
+                      Generating frame...
+                    </div>
+                  )}
                 </div>
                 
                 <div>
