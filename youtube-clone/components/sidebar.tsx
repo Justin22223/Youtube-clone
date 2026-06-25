@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useSidebar } from "@/lib/SidebarContext";
 import { 
   Home, 
   Compass, 
@@ -12,7 +13,8 @@ import {
   Clock, 
   User,
   PlaySquare,
-  PlusCircle
+  PlusCircle,
+  Download
 } from "lucide-react";
 import ChannelDialog from "./channel-dialog";
 import { ElementType } from "react";
@@ -27,6 +29,8 @@ interface MenuItem {
 
 const Sidebar = () => {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { isSidebarOpen, closeSidebarMobile } = useSidebar();
   const [hasChannel, setHasChannel] = useState(false);
   const [channelHandle, setChannelHandle] = useState("1");
   const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
@@ -60,11 +64,12 @@ const Sidebar = () => {
 
   const menuItems: MenuItem[] = [
     { name: "Home", icon: Home, path: "/" },
-    { name: "Explore", icon: Compass, path: "/" },
-    { name: "Subscription", icon: Users, path: "/" },
+    { name: "Explore", icon: Compass, path: "/explore" },
+    { name: "Subscription", icon: Users, path: "/feed/subscriptions" },
     { name: "History", icon: History, path: "/history" },
     { name: "Liked videos", icon: ThumbsUp, path: "/liked" },
     { name: "Watch later", icon: Clock, path: "/watch-later" },
+    { name: "Downloads", icon: Download, path: "/downloads" },
   ];
 
   const channelItems: MenuItem[] = hasChannel 
@@ -80,10 +85,33 @@ const Sidebar = () => {
 
   return (
     <>
-      <aside className="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 overflow-y-auto bg-white border-r dark:bg-black dark:border-gray-800">
-        <div className="py-2">
+      {/* Mobile Backdrop Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300"
+          onClick={closeSidebarMobile}
+        />
+      )}
+
+      <aside 
+        className={`fixed left-0 top-14 h-[calc(100vh-3.5rem)] overflow-y-auto overflow-x-hidden bg-white border-r dark:bg-black dark:border-gray-800 transition-all duration-300 ease-in-out z-50
+          ${isSidebarOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0 md:w-20"}`}
+      >
+        <div className="py-2 flex flex-col">
           {allMenuItems.map((item) => {
-            const isActive = item.path !== "#" && pathname === item.path;
+            const isChannelPage = pathname === `/channel/${channelHandle}`;
+            const isVideosTab = searchParams?.get("tab") === "videos";
+            
+            let isActive = false;
+            if (item.path !== "#") {
+              if (item.name === "Your channel") {
+                isActive = isChannelPage && !isVideosTab;
+              } else if (item.name === "Your videos") {
+                isActive = isChannelPage && isVideosTab;
+              } else {
+                isActive = pathname === item.path;
+              }
+            }
             
             // Fixed: Check if action exists on the item
             if (item.action) {
@@ -97,8 +125,8 @@ const Sidebar = () => {
                       : "hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`}
                 >
-                  <item.icon className={`w-5 h-5 ${item.isCreateChannel ? "text-blue-600" : ""}`} />
-                  <span className={`text-sm ${item.isCreateChannel ? "font-medium" : ""}`}>
+                  <item.icon className={`w-6 h-6 flex-shrink-0 ${item.isCreateChannel ? "text-blue-600" : ""}`} />
+                  <span className={`text-sm whitespace-nowrap ${item.isCreateChannel ? "font-medium" : ""} ${!isSidebarOpen ? "md:hidden" : "block"}`}>
                     {item.name}
                   </span>
                 </button>
@@ -109,14 +137,17 @@ const Sidebar = () => {
               <Link
                 key={item.name}
                 href={item.path}
+                onClick={() => {
+                  if (window.innerWidth < 768) closeSidebarMobile();
+                }}
                 className={`w-full flex items-center gap-4 px-4 py-2 transition-colors ${
                   isActive 
                     ? "bg-gray-100 dark:bg-gray-800 text-black" 
                     : "hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${isActive ? "text-black" : ""}`} />
-                <span className={`text-sm ${isActive ? "font-semibold" : ""}`}>
+                <item.icon className={`w-6 h-6 flex-shrink-0 ${isActive ? "text-black dark:text-white" : ""}`} />
+                <span className={`text-sm whitespace-nowrap ${isActive ? "font-semibold" : ""} ${!isSidebarOpen ? "md:hidden" : "block"}`}>
                   {item.name}
                 </span>
               </Link>

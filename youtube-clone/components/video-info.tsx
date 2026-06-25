@@ -12,6 +12,8 @@ import {
   Check,
   X
 } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import PremiumDialog from "./premium-dialog";
 
 interface VideoInfoProps {
   video: {
@@ -25,6 +27,7 @@ interface VideoInfoProps {
     description: string;
     likes: string;
     dislikes: string;
+    videoUrl?: string;
   };
 }
 
@@ -38,6 +41,8 @@ const VideoInfo = ({ video }: VideoInfoProps) => {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [showNotification, setShowNotification] = useState<{message: string; type: string} | null>(null);
+  const [showPremiumDialog, setShowPremiumDialog] = useState(false);
+  const { user } = useAuth();
 
   const showTempNotification = (message: string, type: string = "success") => {
     setShowNotification({ message, type });
@@ -115,9 +120,51 @@ const VideoInfo = ({ video }: VideoInfoProps) => {
     setShowShareMenu(false);
   };
 
-  const handleDownload = (quality: string) => {
+  const handleDownload = async (quality: string) => {
     setShowDownloadMenu(false);
-    showTempNotification(`Downloading ${quality}... (Demo)`, "info");
+    if (!user) {
+      showTempNotification("Please login to download videos", "error");
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/auth/download/${video.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: user?.id || user?._id || user?.uid || localStorage.getItem("currentUserId") })
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        showTempNotification(`Downloading ${quality}... Saved to Profile`, "success");
+        
+        // Trigger actual physical download of the file
+        try {
+          const videoUrlToDownload = video.videoUrl;
+          if (videoUrlToDownload) {
+             const a = document.createElement("a");
+             a.href = videoUrlToDownload;
+             // Set download attribute to suggest filename
+             a.download = `${video.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${quality}.mp4`;
+             a.target = "_blank";
+             document.body.appendChild(a);
+             a.click();
+             document.body.removeChild(a);
+          }
+        } catch (downloadErr) {
+          console.error("Failed to physically download:", downloadErr);
+          showTempNotification("Added to Downloads section, but physical download failed", "error");
+        }
+      } else if (res.status === 403 && data.requiresPremium) {
+        setShowPremiumDialog(true);
+      } else {
+        showTempNotification(data.message || "Failed to download", "error");
+      }
+    } catch (error) {
+      showTempNotification("Error tracking download", "error");
+    }
   };
 
   const handleSaveToWatchLater = () => {
@@ -317,6 +364,12 @@ const VideoInfo = ({ video }: VideoInfoProps) => {
         </div>
         <p className="text-sm whitespace-pre-wrap">{video.description}</p>
       </div>
+
+      <PremiumDialog 
+        isOpen={showPremiumDialog} 
+        onClose={() => setShowPremiumDialog(false)} 
+        onSuccess={() => { showTempNotification("Upgraded to Premium!", "success"); setShowPremiumDialog(false); }} 
+      />
     </div>
   );
 };

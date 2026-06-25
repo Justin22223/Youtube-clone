@@ -53,7 +53,7 @@ const CategoryTab = () => {
   }, []);
 
   return (
-    <div className="sticky top-14 z-40 bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800">
+    <div className="sticky top-14 z-40 bg-white dark:bg-[#0f0f0f] pb-3 pt-3 px-1">
       <div className="relative flex items-center">
         {showLeftArrow && (
           <button
@@ -66,17 +66,17 @@ const CategoryTab = () => {
 
         <div
           ref={scrollContainerRef}
-          className="flex overflow-x-auto scrollbar-hide gap-3 px-4 py-3"
+          className="flex overflow-x-auto scrollbar-hide gap-3 px-4 py-1"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {categories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-[14px] font-medium whitespace-nowrap transition-all ${
                 selectedCategory === category
                   ? "bg-black dark:bg-white text-white dark:text-black"
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  : "bg-gray-100 dark:bg-[#272727] text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-[#3f3f3f]"
               }`}
             >
               {category}

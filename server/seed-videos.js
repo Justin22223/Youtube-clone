@@ -1,94 +1,118 @@
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import Video from "./models/video.js";
+import Auth from "./models/auth.js";
 
-dotenv.config();
+const uri = "mongodb://admin:admin@ac-a2gjngl-shard-00-00.qbruw7s.mongodb.net:27017,ac-a2gjngl-shard-00-01.qbruw7s.mongodb.net:27017,ac-a2gjngl-shard-00-02.qbruw7s.mongodb.net:27017/youtube?ssl=true&replicaSet=atlas-537it5-shard-0&authSource=admin&appName=db";
 
-const DB_URL = "mongodb://admin:admin@ac-tn0jhd4-shard-00-00.0gf7bjg.mongodb.net:27017,ac-tn0jhd4-shard-00-01.0gf7bjg.mongodb.net:27017,ac-tn0jhd4-shard-00-02.0gf7bjg.mongodb.net:27017/youtube?ssl=true&replicaSet=atlas-11gsr9-shard-0&authSource=admin&appName=Cluster0";
-
-const sampleVideos = [
+const testVideos = [
   {
-    userId: "system",
-    title: "Building a YouTube Clone with Next.js and shadcn/ui",
-    description: "In this video, we'll build a complete YouTube clone using Next.js 15, Tailwind CSS, and shadcn/ui components.",
-    thumbnail: "https://img.youtube.com/vi/1wkPMUZ9vX4/mqdefault.jpg",
-    videoUrl: "https://www.youtube.com/embed/1wkPMUZ9vX4?autoplay=1&rel=0&modestbranding=1",
-    duration: "45:30",
-    views: 124000,
-    likes: [],
-    dislikes: [],
-    visibility: "public"
+    title: "Big Buck Bunny - 60fps 4K",
+    description: "Big Buck Bunny tells the story of a giant rabbit with a heart bigger than himself.",
+    thumbnail: "https://i.ytimg.com/vi/aqz-KE-bpKQ/hqdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    duration: "09:56",
+    views: 1542010,
+    visibility: "public",
   },
   {
-    userId: "system",
-    title: "The Future of AI in 2025",
-    description: "What will AI look like in the near future?",
-    thumbnail: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400",
-    videoUrl: "https://www.youtube.com/embed/jNQXAC9IVRw?autoplay=1",
-    duration: "22:15",
-    views: 89000,
-    likes: [],
-    dislikes: [],
-    visibility: "public"
+    title: "Elephant Dream",
+    description: "The first Blender Open Movie from 2006",
+    thumbnail: "https://i.ytimg.com/vi/eRsGyueVLvQ/hqdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=eRsGyueVLvQ",
+    duration: "10:53",
+    views: 890000,
+    visibility: "public",
   },
   {
-    userId: "system",
-    title: "Top 10 JavaScript Frameworks to Learn",
-    description: "The top JS frameworks you need to know this year.",
-    thumbnail: "https://images.unsplash.com/photo-1592609931095-54a2168ae893?w=400",
-    videoUrl: "https://www.youtube.com/embed/jNQXAC9IVRw?autoplay=1",
-    duration: "18:42",
-    views: 256000,
-    likes: [],
-    dislikes: [],
-    visibility: "public"
+    title: "For Bigger Blazes",
+    description: "HBO GO now works with Chromecast",
+    thumbnail: "https://i.ytimg.com/vi/aAObLszJ72s/hqdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=aAObLszJ72s",
+    duration: "00:15",
+    views: 12040,
+    visibility: "public",
   },
   {
-    userId: "system",
-    title: "How to Build a Startup from Scratch",
-    description: "A complete guide to building your own startup.",
-    thumbnail: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400",
-    videoUrl: "https://www.youtube.com/embed/jNQXAC9IVRw?autoplay=1",
-    duration: "32:10",
+    title: "For Bigger Escapes",
+    description: "Introducing Chromecast. The easiest way to enjoy online video and music on your TV.",
+    thumbnail: "https://i.ytimg.com/vi/h2-5AozxUHQ/hqdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=h2-5AozxUHQ",
+    duration: "00:15",
     views: 45000,
-    likes: [],
-    dislikes: [],
-    visibility: "public"
+    visibility: "public",
   },
   {
-    userId: "system",
-    title: "Mastering React Server Components",
-    description: "Deep dive into RSCs.",
-    thumbnail: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400",
-    videoUrl: "https://www.youtube.com/embed/jNQXAC9IVRw?autoplay=1",
-    duration: "28:33",
-    views: 312000,
-    likes: [],
-    dislikes: [],
-    visibility: "public"
+    title: "Sintel - Blender Open Movie",
+    description: "Sintel is an independently produced short film, initiated by the Blender Foundation as a means to further improve and validate the free/open source 3D creation suite Blender.",
+    thumbnail: "https://i.ytimg.com/vi/eRsGyueVLvQ/hqdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=eRsGyueVLvQ",
+    duration: "14:48",
+    views: 5600000,
+    visibility: "public",
   },
   {
-    userId: "system",
-    title: "Amazing Nature Documentary",
-    description: "Explore the beautiful nature.",
-    thumbnail: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400",
-    videoUrl: "https://www.youtube.com/embed/jNQXAC9IVRw?autoplay=1",
-    duration: "45:00",
-    views: 1200000,
-    likes: [],
-    dislikes: [],
-    visibility: "public"
+    title: "Tears of Steel",
+    description: "Tears of Steel was realized with crowd-funding by users of the open source 3D creation tool Blender.",
+    thumbnail: "https://i.ytimg.com/vi/R6MlUcmOul8/hqdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=R6MlUcmOul8",
+    duration: "12:14",
+    views: 3400000,
+    visibility: "public",
+  },
+  {
+    title: "Volkswagen GTI Review",
+    description: "The Volkswagen GTI is the original hot hatch.",
+    thumbnail: "https://i.ytimg.com/vi/AqQ109-1Ams/hqdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=AqQ109-1Ams",
+    duration: "09:53",
+    views: 750000,
+    visibility: "public",
+  },
+  {
+    title: "We Are Going On Bullrun",
+    description: "The Bullrun routing strategy.",
+    thumbnail: "https://i.ytimg.com/vi/Vv5wM7_B4_Q/hqdefault.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=Vv5wM7_B4_Q",
+    duration: "00:47",
+    views: 23000,
+    visibility: "public",
   }
 ];
 
-mongoose.connect(DB_URL)
-  .then(async () => {
+async function seed() {
+  try {
+    await mongoose.connect(uri);
     console.log("Connected to MongoDB");
-    await Video.insertMany(sampleVideos);
-    console.log("Mock videos seeded successfully!");
-    mongoose.disconnect();
-  })
-  .catch((err) => {
-    console.error("Error seeding videos", err);
-    mongoose.disconnect();
-  });
+
+    // Check if we have any users to assign these videos to
+    let user = await Auth.findOne();
+    if (!user) {
+      console.log("No users found, creating a dummy user...");
+      user = await Auth.create({
+        username: "DemoChannel",
+        channelName: "Demo Channel",
+        email: "demo@example.com",
+        password: "hashedpassword123", // Dummy
+        avatar: "https://ui-avatars.com/api/?name=Demo&background=E74C3C&color=fff&size=64"
+      });
+    }
+
+    const userId = user._id.toString();
+
+    // Optionally, clear old videos
+    // await Video.deleteMany({});
+    
+    console.log("Inserting test videos...");
+    const videosWithUser = testVideos.map(v => ({ ...v, userId }));
+    
+    await Video.insertMany(videosWithUser);
+    
+    console.log(`Successfully seeded ${videosWithUser.length} playable videos assigned to user ${user.username}`);
+    process.exit(0);
+  } catch (err) {
+    console.error("Error seeding data:", err);
+    process.exit(1);
+  }
+}
+
+seed();

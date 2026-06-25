@@ -1,4 +1,5 @@
 "use client";
+import { getAvatarUrl } from "@/lib/utils";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -332,7 +333,7 @@ const CommentItem = ({
   return (
     <div className={`flex gap-3 hover:bg-gray-50/50 dark:hover:bg-gray-905/30 p-2.5 rounded-xl transition ${isReply ? "ml-10 mt-2.5" : "mt-3"}`}>
       <Image
-        src={comment.userAvatar || "https://ui-avatars.com/api/?name=User&background=random&color=fff&size=40"}
+        src={comment.userAvatar || getAvatarUrl("User", "random")}
         alt={comment.username || "User"}
         width={isReply ? 32 : 40}
         height={isReply ? 32 : 40}
@@ -439,7 +440,7 @@ const CommentItem = ({
         {showReplyInput && (
           <div className="flex gap-2.5 mt-3 p-3 bg-gray-50/70 dark:bg-gray-800/20 rounded-xl border border-gray-100 dark:border-gray-800/30">
             <Image
-              src={dbUser?.avatar || user?.photoURL || "https://ui-avatars.com/api/?name=User"}
+              src={dbUser?.avatar || user?.photoURL || getAvatarUrl("User")}
               alt="Current user"
               width={28} height={28}
               className="rounded-full flex-shrink-0"
@@ -620,7 +621,7 @@ const Comments = ({ videoId, commentCount = 0 }: CommentsProps) => {
 
       <div className="flex gap-3.5 mb-8 bg-gray-50/50 dark:bg-gray-900/10 p-4 rounded-2xl border border-gray-100 dark:border-gray-805/40 backdrop-blur-sm">
         <Image
-          src={dbUser?.avatar || user?.photoURL || "https://ui-avatars.com/api/?name=User&background=random&color=fff&size=40"}
+          src={dbUser?.avatar || user?.photoURL || getAvatarUrl("User", "random")}
           alt="Current user"
           width={40} height={40}
           className="rounded-full flex-shrink-0 border border-gray-200 dark:border-gray-800"

@@ -2,9 +2,12 @@
 
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Check, Clock, CheckCheck } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Check, Clock, CheckCheck, Download } from "lucide-react";
 import Comments from "@/components/comments";
+import PremiumDialog from "@/components/premium-dialog";
+import VideoPlayer from "@/components/video-player";
 import { getBackendUrl, getVideoUrl } from "@/lib/utils";
+import { useAuth } from "@/lib/AuthContext";
 
 const getAvatarColor = (name: string) => {
   if (!name) return '3498DB';
@@ -43,6 +46,10 @@ export default function WatchPage() {
   const [video, setVideo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
+  const { dbUser } = useAuth() as any;
+  const [watchSeconds, setWatchSeconds] = useState(0);
+  const [videoBlocked, setVideoBlocked] = useState(false);
+  
   const [likesCount, setLikesCount] = useState(0);
   const [dislikesCount, setDislikesCount] = useState(0);
   const [userLiked, setUserLiked] = useState(false);
@@ -59,7 +66,7 @@ export default function WatchPage() {
 
   // Check if video is in watch later (from MongoDB)
   const checkWatchLater = async () => {
-    const userId = localStorage.getItem("userId");
+    const userId = localStorage.getItem("currentUserId") || localStorage.getItem("userId");
     if (!userId) return;
     
     try {
@@ -74,7 +81,7 @@ export default function WatchPage() {
 
   // Add to Watch Later (MongoDB)
   const handleAddToWatchLater = async () => {
-    const userId = localStorage.getItem("userId");
+    const userId = localStorage.getItem("currentUserId") || localStorage.getItem("userId");
     if (!userId) {
       alert("Please login to add to watch later");
       return;
@@ -136,9 +143,74 @@ export default function WatchPage() {
     if (videoId) fetchVideo();
   }, [videoId]);
 
+  // Record video in watch history
+  useEffect(() => {
+    if (video && !loading) {
+      try {
+        const savedHistory = localStorage.getItem("watchHistory");
+        let history = [];
+        if (savedHistory) {
+          try {
+            history = JSON.parse(savedHistory);
+            if (!Array.isArray(history)) history = [];
+          } catch (e) {
+            history = [];
+          }
+        }
+        
+        const videoIdToSave = video._id || video.id || videoId;
+        
+        // Remove if already exists to put it at the top
+        history = history.filter((item: any) => item.id !== videoIdToSave);
+        
+        const newHistoryItem = {
+          id: videoIdToSave,
+          title: video.title || "Unknown Title",
+          channel: video.channel || "Channel Name",
+          channelAvatar: getAvatarUrl(video.channel || "Channel", 48),
+          thumbnail: video.thumbnail || "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400",
+          views: video.views ? `${video.views} views` : "0 views",
+          timestamp: formatDate(video.createdAt),
+          watchedAt: new Date().toISOString(),
+          duration: video.duration || "10:00",
+        };
+        
+        history.unshift(newHistoryItem);
+        localStorage.setItem("watchHistory", JSON.stringify(history));
+      } catch (error) {
+        console.error("Error saving to watch history:", error);
+      }
+    }
+  }, [video, loading, videoId]);
+
+  useEffect(() => {
+    if (loading || !video || videoBlocked) return;
+    
+    let limit = 300; // Free (5 mins)
+    if (dbUser?.plan === "Bronze") limit = 420; // 7 mins
+    else if (dbUser?.plan === "Silver") limit = 600; // 10 mins
+    else if (dbUser?.plan === "Gold" || dbUser?.isPremium) limit = Infinity;
+    
+    if (limit === Infinity) return;
+
+    const timer = setInterval(() => {
+      setWatchSeconds(prev => {
+        if (prev >= limit) {
+          clearInterval(timer);
+          setVideoBlocked(true);
+          setShowPremiumDialog(true);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [dbUser, loading, video, videoBlocked]);
+
   const fetchLikeStatus = async () => {
     try {
-      const userId = localStorage.getItem("userId");
+      const userId = localStorage.getItem("currentUserId") || localStorage.getItem("userId");
       if (!userId) return;
       
       const res = await fetch(`${BACKEND_URL}/api/videos/like-status/${videoId}?userId=${userId}`);
@@ -160,7 +232,7 @@ export default function WatchPage() {
   }, [videoId]);
 
   const handleLike = async () => {
-    const userId = localStorage.getItem("userId");
+    const userId = localStorage.getItem("currentUserId") || localStorage.getItem("userId");
     if (!userId) {
       alert("Please login to like");
       return;
@@ -183,7 +255,7 @@ export default function WatchPage() {
   };
 
   const handleDislike = async () => {
-    const userId = localStorage.getItem("userId");
+    const userId = localStorage.getItem("currentUserId") || localStorage.getItem("userId");
     if (!userId) {
       alert("Please login to dislike");
       return;
@@ -202,6 +274,53 @@ export default function WatchPage() {
       setDislikesCount(data.dislikesCount);
     } catch (error) {
       console.error("Error disliking:", error);
+    }
+  };
+
+  const [showPremiumDialog, setShowPremiumDialog] = useState(false);
+
+  const handleDownload = async () => {
+    const userId = localStorage.getItem("currentUserId") || localStorage.getItem("userId");
+    if (!userId) {
+      alert("Please login to download videos");
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/auth/download/${videoId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId })
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert("Downloading... Saved to Profile Downloads");
+        
+        // Trigger actual physical download of the file
+        try {
+          const videoUrlToDownload = video.videoUrl;
+          if (videoUrlToDownload) {
+             const a = document.createElement("a");
+             a.href = videoUrlToDownload;
+             a.download = `${video.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp4`;
+             a.target = "_blank";
+             document.body.appendChild(a);
+             a.click();
+             document.body.removeChild(a);
+          }
+        } catch (downloadErr) {
+          console.error("Failed to physically download:", downloadErr);
+        }
+      } else if (res.status === 403 && data.requiresPremium) {
+        setShowPremiumDialog(true);
+      } else {
+        alert(data.message || "Failed to download");
+      }
+    } catch (error) {
+      alert("Error tracking download");
     }
   };
 
@@ -239,25 +358,37 @@ export default function WatchPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black">
-      <div className="max-w-[1800px] mx-auto px-4 py-6">
-        <div className="flex flex-col lg:flex-row gap-6">
+      <div className="max-w-[1800px] mx-auto px-0 md:px-4 py-0 md:py-6">
+        <div className="flex flex-col xl:flex-row gap-6">
           <div className="flex-1 min-w-0">
-            <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
-              {videoUrl?.includes("youtube.com") ? (
-                <iframe 
-                  src={videoUrl}
-                  title={video.title} 
-                  frameBorder="0" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                  referrerPolicy="strict-origin-when-cross-origin" 
-                  allowFullScreen
-                  className="absolute top-0 left-0 w-full h-full"
-                />
+            <div className="relative w-full aspect-video bg-black md:rounded-xl overflow-hidden shadow-lg">
+              {videoBlocked ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white z-10 text-center px-4">
+                  <Clock className="w-16 h-16 text-yellow-500 mb-4" />
+                  <h2 className="text-2xl md:text-3xl font-bold mb-2">Watch Limit Reached</h2>
+                  <p className="text-gray-300 mb-6">You have reached the watch limit for your current plan. Upgrade to keep watching!</p>
+                  <button 
+                    onClick={() => setShowPremiumDialog(true)}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-full font-bold transition text-lg shadow-lg"
+                  >
+                    View Premium Plans
+                  </button>
+                </div>
               ) : (
-                <video src={videoUrl} className="w-full h-full" controls autoPlay />
+                <VideoPlayer 
+                  videoUrl={videoUrl || ""} 
+                  title={video.title}
+                  onOpenComments={() => {
+                    document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  onNextVideo={() => {
+                    window.location.href = '/';
+                  }}
+                />
               )}
             </div>
-            <h1 className="text-xl md:text-2xl font-bold mt-4">{video.title}</h1>
+            <div className="px-4 md:px-0">
+              <h1 className="text-xl md:text-2xl font-bold mt-4">{video.title}</h1>
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4">
               <div className="flex items-center gap-4">
@@ -275,7 +406,7 @@ export default function WatchPage() {
                 <button 
                   onClick={handleLike} 
                   className={`flex items-center gap-2 px-4 py-1.5 rounded-full transition ${
-                    userLiked ? "bg-blue-100 text-blue-600" : "bg-gray-100 hover:bg-gray-200"
+                    userLiked ? "bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400" : "bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
                   }`}
                 >
                   <ThumbsUp className="w-5 h-5" />
@@ -284,7 +415,7 @@ export default function WatchPage() {
                 <button 
                   onClick={handleDislike} 
                   className={`flex items-center gap-2 px-4 py-1.5 rounded-full transition ${
-                    userDisliked ? "bg-red-100 text-red-600" : "bg-gray-100 hover:bg-gray-200"
+                    userDisliked ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400" : "bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
                   }`}
                 >
                   <ThumbsDown className="w-5 h-5" />
@@ -295,15 +426,23 @@ export default function WatchPage() {
                   onClick={handleAddToWatchLater}
                   className={`flex items-center gap-2 px-4 py-1.5 rounded-full transition ${
                     isInWatchLater
-                      ? "bg-blue-100 text-blue-600"
-                      : "bg-gray-100 hover:bg-gray-200"
+                      ? "bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400"
+                      : "bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
                   }`}
                 >
                   {isInWatchLater ? <CheckCheck className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                   <span className="hidden sm:inline">{isInWatchLater ? "Added" : "Watch later"}</span>
                 </button>
                 
-                <button className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200">
+                <button 
+                  onClick={handleDownload}
+                  className="flex items-center gap-2 px-4 py-1.5 rounded-full transition bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                >
+                  <Download className="w-5 h-5" />
+                  <span className="hidden sm:inline">Download</span>
+                </button>
+                
+                <button className="flex items-center gap-2 px-4 py-1.5 rounded-full transition bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700">
                   <Share2 className="w-5 h-5" />
                   <span className="hidden sm:inline">Share</span>
                 </button>
@@ -319,10 +458,23 @@ export default function WatchPage() {
               <p className="text-sm">{video.description}</p>
             </div>
 
-            <Comments videoId={videoId} />
+            <div id="comments-section" className="pt-4">
+              <Comments videoId={videoId} />
+            </div>
+            </div>
           </div>
         </div>
       </div>
+      
+      {showPremiumDialog && (
+        <PremiumDialog
+          isOpen={showPremiumDialog}
+          onClose={() => setShowPremiumDialog(false)}
+          onSuccess={() => {
+            alert("Payment successful! You are now a Premium user with unlimited downloads.");
+          }}
+        />
+      )}
     </div>
   );
 }

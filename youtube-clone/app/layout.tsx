@@ -5,7 +5,11 @@ import "./globals.css";
 import Header from "@/components/header";
 import Sidebar from "@/components/sidebar";
 import CategoryTab from "@/components/category-tab";
+import MainLayout from "@/components/main-layout";
 import { AuthProvider } from "@/lib/AuthContext";
+import { SidebarProvider } from "@/lib/SidebarContext";
+
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,18 +21,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>
-          <Header />
-          <div className="flex">
-            <Sidebar />
-            <main className="flex-1 ml-64 mt-14">
-              <CategoryTab />
-              <div className="p-4">
+        <ThemeProvider>
+          <AuthProvider>
+            <SidebarProvider>
+              <Header />
+              <MainLayout>
                 {children}
-              </div>
-            </main>
-          </div>
-        </AuthProvider>
+              </MainLayout>
+            </SidebarProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

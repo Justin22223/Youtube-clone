@@ -260,71 +260,154 @@ const HistoryPage = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <HistoryIcon className="w-8 h-8" />
-          <h1 className="text-2xl font-bold">Watch history</h1>
+    <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
+      {/* Main History Content */}
+      <div className="flex-1">
+        <h1 className="text-2xl font-bold mb-6">Watch history</h1>
+
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold">Today</h2>
         </div>
-        
-        {historyItems.length > 0 && (
-          <div className="flex gap-2">
-            {!isSelectionMode ? (
-              <>
-                <button
-                  onClick={() => setIsSelectionMode(true)}
-                  className="px-4 py-2 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition"
-                >
-                  Select
-                </button>
-                <button
-                  onClick={handleClearAll}
-                  className="px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition"
-                >
-                  Clear all
-                </button>
-              </>
-            ) : (
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSelectAll}
-                  className="px-4 py-2 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition"
-                >
-                  {selectedItems.size === filteredHistory.length ? "Deselect all" : "Select all"}
-                </button>
-                {selectedItems.size > 0 && (
-                  <button
-                    onClick={handleClearSelected}
-                    className="px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition"
-                  >
-                    Delete ({selectedItems.size})
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    setIsSelectionMode(false);
-                    setSelectedItems(new Set());
-                  }}
-                  className="px-4 py-2 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition"
-                >
-                  Cancel
-                </button>
-              </div>
+
+        {historyItems.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <HistoryIcon className="w-10 h-10 text-gray-400" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">Watch history is empty</h2>
+            <p className="text-gray-500 mb-6">Videos you watch will appear here</p>
+            <Link
+              href="/"
+              className="inline-block px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition"
+            >
+              Browse videos
+            </Link>
+          </div>
+        ) : filteredHistory.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-gray-500">No matching videos found in your history</p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="mt-4 text-blue-600 hover:underline"
+              >
+                Clear search
+              </button>
             )}
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(groupedHistory).map(([date, items]) => (
+              <div key={date}>
+                <h2 className="text-lg font-semibold mb-3 sticky top-14 bg-white dark:bg-black py-2 z-10">
+                  {date}
+                </h2>
+                <div className="space-y-4">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex gap-4 group">
+                      {isSelectionMode && (
+                        <div className="flex items-center">
+                          <button
+                            onClick={() => handleSelectItem(item.id)}
+                            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition ${
+                              selectedItems.has(item.id)
+                                ? "bg-blue-600 border-blue-600"
+                                : "border-gray-400 hover:border-blue-500"
+                            }`}
+                          >
+                            {selectedItems.has(item.id) && <Check className="w-3 h-3 text-white" />}
+                          </button>
+                        </div>
+                      )}
+                      
+                      <Link href={`/watch/${item.id}`} className="flex-shrink-0">
+                        <div className="relative w-40">
+                          <div className="aspect-video bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden">
+                            <Image
+                              src={item.thumbnail}
+                              alt={item.title}
+                              width={160}
+                              height={90}
+                              className="object-cover w-full h-full group-hover:scale-105 transition"
+                            />
+                          </div>
+                          <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
+                            {item.duration}
+                          </span>
+                          {item.progress && item.progress < 100 && (
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600/50">
+                              <div 
+                                className="h-full bg-red-600"
+                                style={{ width: `${item.progress}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                      
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/watch/${item.id}`}>
+                          <h3 className="font-semibold text-base hover:text-blue-600 line-clamp-2">
+                            {item.title}
+                          </h3>
+                        </Link>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Image
+                            src={item.channelAvatar}
+                            alt={item.channel}
+                            width={20}
+                            height={20}
+                            className="rounded-full"
+                          />
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {item.channel}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            <span>{item.views}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            <span>{item.timestamp}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>Watched {formatDate(item.watchedAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {!isSelectionMode && (
+                        <button
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition"
+                          title="Remove from history"
+                        >
+                          <X className="w-4 h-4 text-gray-500" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {historyItems.length > 0 && (
-        <div className="flex gap-3 mb-6">
-          <div className="flex-1 relative">
+      {/* Right Sidebar */}
+      <div className="w-full lg:w-80 flex-shrink-0 lg:pl-8 lg:border-l border-gray-200 dark:border-gray-800">
+        <div className="sticky top-20 space-y-6">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search in watch history..."
+              placeholder="Search watch history"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-full focus:outline-none focus:border-blue-500 dark:bg-gray-900"
+              className="w-full pl-9 pr-4 py-2 bg-transparent border-b border-gray-300 dark:border-gray-700 focus:outline-none focus:border-black dark:focus:border-white transition-colors"
             />
             {searchQuery && (
               <button
@@ -335,180 +418,45 @@ const HistoryPage = () => {
               </button>
             )}
           </div>
-          
-          <div className="relative">
-            <button
-              onClick={() => setShowFilterMenu(!showFilterMenu)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-            >
-              <Filter className="w-4 h-4" />
-              <span className="text-sm">
-                {filterType === "all" && "All time"}
-                {filterType === "today" && "Today"}
-                {filterType === "yesterday" && "Yesterday"}
-                {filterType === "week" && "Last 7 days"}
-                {filterType === "month" && "Last 30 days"}
-              </span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            
-            {showFilterMenu && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowFilterMenu(false)} />
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
-                  {[
-                    { value: "all", label: "All time" },
-                    { value: "today", label: "Today" },
-                    { value: "yesterday", label: "Yesterday" },
-                    { value: "week", label: "Last 7 days" },
-                    { value: "month", label: "Last 30 days" },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => {
-                        setFilterType(option.value as any);
-                        setShowFilterMenu(false);
-                      }}
-                      className={`w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition ${
-                        filterType === option.value ? "bg-gray-100 dark:bg-gray-700 font-semibold" : ""
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
-      {historyItems.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            <HistoryIcon className="w-10 h-10 text-gray-400" />
-          </div>
-          <h2 className="text-xl font-semibold mb-2">Watch history is empty</h2>
-          <p className="text-gray-500 mb-6">Videos you watch will appear here</p>
-          <Link
-            href="/"
-            className="inline-block px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition"
-          >
-            Browse videos
-          </Link>
-        </div>
-      ) : filteredHistory.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-gray-500">No matching videos found in your history</p>
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="mt-4 text-blue-600 hover:underline"
-            >
-              Clear search
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {Object.entries(groupedHistory).map(([date, items]) => (
-            <div key={date}>
-              <h2 className="text-lg font-semibold mb-3 sticky top-14 bg-white dark:bg-black py-2 z-10">
-                {date}
-              </h2>
-              <div className="space-y-4">
-                {items.map((item) => (
-                  <div key={item.id} className="flex gap-4 group">
-                    {isSelectionMode && (
-                      <div className="flex items-center">
-                        <button
-                          onClick={() => handleSelectItem(item.id)}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition ${
-                            selectedItems.has(item.id)
-                              ? "bg-blue-600 border-blue-600"
-                              : "border-gray-400 hover:border-blue-500"
-                          }`}
-                        >
-                          {selectedItems.has(item.id) && <Check className="w-3 h-3 text-white" />}
-                        </button>
-                      </div>
-                    )}
-                    
-                    <Link href={`/watch/${item.id}`} className="flex-shrink-0">
-                      <div className="relative w-40">
-                        <div className="aspect-video bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden">
-                          <Image
-                            src={item.thumbnail}
-                            alt={item.title}
-                            width={160}
-                            height={90}
-                            className="object-cover w-full h-full group-hover:scale-105 transition"
-                          />
-                        </div>
-                        <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 rounded">
-                          {item.duration}
-                        </span>
-                        {item.progress && item.progress < 100 && (
-                          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600/50">
-                            <div 
-                              className="h-full bg-red-600"
-                              style={{ width: `${item.progress}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                    
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/watch/${item.id}`}>
-                        <h3 className="font-semibold text-base hover:text-blue-600 line-clamp-2">
-                          {item.title}
-                        </h3>
-                      </Link>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Image
-                          src={item.channelAvatar}
-                          alt={item.channel}
-                          width={20}
-                          height={20}
-                          className="rounded-full"
-                        />
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {item.channel}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          <span>{item.views}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{item.timestamp}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>Watched {formatDate(item.watchedAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {!isSelectionMode && (
-                      <button
-                        onClick={() => handleRemoveItem(item.id)}
-                        className="opacity-0 group-hover:opacity-100 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition"
-                        title="Remove from history"
-                      >
-                        <X className="w-4 h-4 text-gray-500" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">History type</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <span className="text-sm font-medium">Watch history</span>
+              <div className="w-4 h-4 rounded-full border-2 border-black dark:border-white flex items-center justify-center">
+                <div className="w-2 h-2 bg-black dark:bg-white rounded-full"></div>
               </div>
             </div>
-          ))}
+            <div className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-lg cursor-pointer transition">
+              <span className="text-sm">Community</span>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-4 space-y-1">
+            <button
+              onClick={handleClearAll}
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+            >
+              <Trash2 className="w-5 h-5 text-gray-500" />
+              <span>Clear all watch history</span>
+            </button>
+            <button
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+            >
+              <HistoryIcon className="w-5 h-5 text-gray-500" />
+              <span>Pause watch history</span>
+            </button>
+            <button
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+            >
+              <Filter className="w-5 h-5 text-gray-500" />
+              <span>Manage all history</span>
+            </button>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

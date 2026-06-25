@@ -13,6 +13,14 @@ const AuthSchema = new mongoose.Schema({
   subscribedUsers: { type: [String], default: [] },
   totalViews: { type: Number, default: 0 },
   authProvider: { type: String, enum: ["email", "google"], default: "email" },
+  mobileNumber: { type: String },
+  otp: { type: String },
+  otpExpiresAt: { type: Date },
+  isPremium: { type: Boolean, default: false },
+  plan: { type: String, enum: ["Free", "Bronze", "Silver", "Gold"], default: "Free" },
+  downloadedVideos: { type: [String], default: [] },
+  downloadCountToday: { type: Number, default: 0 },
+  lastDownloadDate: { type: Date, default: null }
 }, { timestamps: true });
 
 export default mongoose.model("Auth", AuthSchema);

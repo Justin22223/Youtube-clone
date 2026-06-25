@@ -79,9 +79,12 @@ export const AuthProvider = ({ children }) => {
     try {
       await signOut(auth);
       setDbUser(null);
+      setUser(null);
       if (typeof window !== "undefined") {
         localStorage.removeItem("userId");
         localStorage.removeItem("username");
+        localStorage.removeItem("userToken");
+        localStorage.removeItem("currentUserId");
       }
       console.log("✅ User signed out");
     } catch (error) {
@@ -102,10 +105,37 @@ export const AuthProvider = ({ children }) => {
 
   // Auth state listener
   useEffect(() => {
+    const checkCustomAuth = async () => {
+      if (typeof window !== "undefined") {
+        const token = localStorage.getItem("userToken");
+        const currentUserId = localStorage.getItem("currentUserId");
+        if (token && currentUserId) {
+          try {
+            const response = await fetch(`http://localhost:5000/api/auth/profile/${currentUserId}`);
+            if (response.ok) {
+              const userData = await response.json();
+              setUser({
+                uid: userData._id,
+                email: userData.email,
+                displayName: userData.username,
+                photoURL: userData.avatar,
+                isCustomAuth: true
+              });
+              setDbUser(userData);
+              setLoading(false);
+              return true;
+            }
+          } catch (error) {
+            console.error("Error fetching custom user:", error);
+          }
+        }
+      }
+      return false;
+    };
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      
       if (firebaseUser) {
+        setUser(firebaseUser);
         if (typeof window !== "undefined") {
           localStorage.setItem("userId", firebaseUser.uid);
           localStorage.setItem("username", firebaseUser.displayName || "User");
@@ -120,15 +150,21 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
           console.error("Error getting user data:", error);
         }
+        setLoading(false);
       } else {
-        setDbUser(null);
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("userId");
-          localStorage.removeItem("username");
+        const isCustom = await checkCustomAuth();
+        if (!isCustom) {
+          setUser(null);
+          setDbUser(null);
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("userId");
+            localStorage.removeItem("username");
+            localStorage.removeItem("userToken");
+            localStorage.removeItem("currentUserId");
+          }
+          setLoading(false);
         }
       }
-      
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);

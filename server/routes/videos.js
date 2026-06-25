@@ -59,6 +59,17 @@ router.get("/user/:userId", async (req, res) => {
   }
 });
 
+// Get liked videos by user
+router.get("/liked/:userId", async (req, res) => {
+  try {
+    const videos = await Video.find({ likes: req.params.userId }).sort({ createdAt: -1 });
+    const formattedVideos = videos.map(video => formatVideoUrls(video, req));
+    res.status(200).json(formattedVideos);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Create video
 router.post("/", async (req, res) => {
   try {

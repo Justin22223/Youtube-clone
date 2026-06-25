@@ -1,17 +1,58 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+dotenv.config();
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.js";
 import videoRoutes from "./routes/videos.js";
 import uploadRoutes from "./routes/upload.js";
 import commentRoutes from "./routes/comments.js";
 import watchLaterRoutes from "./routes/watchlater.js";
-
-
-dotenv.config();
+import premiumRoutes from "./routes/premium.js";
 
 const app = express();
+import { createServer } from "http";
+import { Server } from "socket.io";
+
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        "http://localhost:3000",
+        process.env.FRONTEND_URL
+      ].filter(Boolean);
+      if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Fallback to allow connection for testing/preview links
+    },
+    credentials: true,
+  }
+});
+
+io.on("connection", (socket) => {
+  socket.on("join-room", (roomId, userId) => {
+    socket.join(roomId);
+    socket.to(roomId).emit("user-connected", userId);
+
+    socket.on("disconnect", () => {
+      socket.to(roomId).emit("user-disconnected", userId);
+    });
+  });
+
+  socket.on("offer", (data) => {
+    socket.to(data.roomId).emit("offer", { ...data, senderId: socket.id });
+  });
+
+  socket.on("answer", (data) => {
+    socket.to(data.roomId).emit("answer", { ...data, senderId: socket.id });
+  });
+
+  socket.on("ice-candidate", (data) => {
+    socket.to(data.roomId).emit("ice-candidate", { ...data, senderId: socket.id });
+  });
+});
 
 // CORS - Allow frontend
 const allowedOrigins = [
@@ -40,6 +81,7 @@ app.use("/api/videos", videoRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/watchlater", watchLaterRoutes);
+app.use("/api/premium", premiumRoutes);
 app.get("/", (req, res) => {
   res.send("YouTube backend is working");
 });
@@ -54,7 +96,7 @@ const connectWithRetry = (url, isFallback = false) => {
     .connect(url)
     .then(() => {
       console.log("✅ MongoDB connected successfully" + (isFallback ? " (using direct shard URL fallback)" : ""));
-      app.listen(PORT, () => {
+      server.listen(PORT, () => {
         console.log(`✅ Server running on port ${PORT}`);
         console.log(`📍 http://localhost:${PORT}`);
       });

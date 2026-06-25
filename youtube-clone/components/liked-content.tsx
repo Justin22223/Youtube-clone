@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getImageUrl } from "@/lib/utils";
+import { getAvatarUrl, getImageUrl, getBackendUrl } from "@/lib/utils";
+import { useAuth } from "@/lib/AuthContext";
+import { api } from "@/lib/api";
 import { 
   ThumbsUp, 
   Trash2, 
@@ -47,93 +49,75 @@ const LikedContent = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "today" | "week" | "month">("all");
   const [showFilterMenu, setShowFilterMenu] = useState(false);
-
-  // Sample liked videos data
-  const sampleLikedVideos: LikedVideo[] = [
-    {
-      id: "1",
-      title: "Building a YouTube Clone with Next.js and shadcn/ui",
-      channel: "CodeMaster",
-      channelAvatar: "https://ui-avatars.com/api/?name=CodeMaster&background=E74C3C&color=fff&size=32",
-      thumbnail: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400",
-      views: "124K views",
-      timestamp: "2 days ago",
-      likedAt: new Date().toISOString(),
-      duration: "45:30",
-    },
-    {
-      id: "2",
-      title: "The Future of AI in 2025",
-      channel: "TechToday",
-      channelAvatar: "https://ui-avatars.com/api/?name=TechToday&background=3498DB&color=fff&size=32",
-      thumbnail: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400",
-      views: "89K views",
-      timestamp: "5 days ago",
-      likedAt: new Date(Date.now() - 86400000).toISOString(),
-      duration: "22:15",
-    },
-    {
-      id: "3",
-      title: "Top 10 JavaScript Frameworks to Learn",
-      channel: "WebDev Simplified",
-      channelAvatar: "https://ui-avatars.com/api/?name=WebDev&background=2ECC71&color=fff&size=32",
-      thumbnail: "https://images.unsplash.com/photo-1592609931095-54a2168ae893?w=400",
-      views: "256K views",
-      timestamp: "1 week ago",
-      likedAt: new Date(Date.now() - 172800000).toISOString(),
-      duration: "18:42",
-    },
-    {
-      id: "4",
-      title: "How to Build a Startup from Scratch",
-      channel: "Entrepreneur Life",
-      channelAvatar: "https://ui-avatars.com/api/?name=Entrepreneur&background=F39C12&color=fff&size=32",
-      thumbnail: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400",
-      views: "45K views",
-      timestamp: "3 days ago",
-      likedAt: new Date(Date.now() - 259200000).toISOString(),
-      duration: "32:10",
-    },
-    {
-      id: "5",
-      title: "Mastering React Server Components",
-      channel: "React University",
-      channelAvatar: "https://ui-avatars.com/api/?name=React&background=9B59B6&color=fff&size=32",
-      thumbnail: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400",
-      views: "312K views",
-      timestamp: "4 days ago",
-      likedAt: new Date(Date.now() - 345600000).toISOString(),
-      duration: "28:33",
-    },
-  ];
+  const { dbUser, user } = useAuth();
+  const currentUserId = dbUser?._id || user?.uid;
 
   useEffect(() => {
-    setIsLoading(true);
-    setTimeout(() => {
-      const savedLiked = localStorage.getItem("likedVideos");
-      if (savedLiked) {
-        setLikedVideos(JSON.parse(savedLiked));
-      } else {
-        setLikedVideos(sampleLikedVideos);
+    const fetchLikedVideos = async () => {
+      if (!currentUserId) {
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
-    }, 500);
-  }, []);
+      setIsLoading(true);
+      try {
+        const videos = await api.getLikedVideos(currentUserId);
+        const mapped: LikedVideo[] = videos.map((v: any) => ({
+          id: v._id,
+          title: v.title,
+          channel: v.channel || "User",
+          channelAvatar: v.channelAvatar || getAvatarUrl("User", "3498DB"),
+          thumbnail: v.thumbnail,
+          views: `${v.views || 0} views`,
+          timestamp: v.createdAt ? new Date(v.createdAt).toLocaleDateString() : "Recently",
+          likedAt: v.createdAt || new Date().toISOString(),
+          duration: v.duration || "00:00"
+        }));
+        setLikedVideos(mapped);
+      } catch (error) {
+        console.error("Failed to fetch liked videos:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  useEffect(() => {
-    if (likedVideos.length > 0 && !isLoading) {
-      localStorage.setItem("likedVideos", JSON.stringify(likedVideos));
-    }
-  }, [likedVideos, isLoading]);
+    fetchLikedVideos();
+  }, [currentUserId]);
 
-  const handleRemoveLike = (id: string) => {
+  const handleRemoveLike = async (id: string) => {
     setLikedVideos(prev => prev.filter(video => video.id !== id));
+    if (currentUserId) {
+      try {
+        const backendUrl = getBackendUrl();
+        await fetch(`${backendUrl}/api/videos/like/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUserId })
+        });
+      } catch (error) {
+        console.error("Failed to unlike video:", error);
+      }
+    }
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (confirm("Are you sure you want to remove all liked videos?")) {
+      const videosToRemove = [...likedVideos];
       setLikedVideos([]);
-      localStorage.removeItem("likedVideos");
+      
+      if (currentUserId) {
+        const backendUrl = getBackendUrl();
+        for (const video of videosToRemove) {
+          try {
+            await fetch(`${backendUrl}/api/videos/like/${video.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId: currentUserId })
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
     }
   };
 

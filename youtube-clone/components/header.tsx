@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Menu, Search, Mic, Video, Bell, LogOut, History, ThumbsUp, Clock, PlusCircle, LogIn } from "lucide-react";
+import { Menu, Search, Mic, Video, Bell, LogOut, History, ThumbsUp, Clock, PlusCircle, LogIn, Download, Phone } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import ChannelDialog from "./channel-dialog";
+import AuthModal from "./auth-modal";
 import { useAuth } from "@/lib/AuthContext";
+import { useSidebar } from "@/lib/SidebarContext";
 import { getUserWithChannel, saveUserAfterLogin } from "@/lib/firebase";
 import { ElementType } from "react";
 
@@ -24,11 +26,13 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [hasChannel, setHasChannel] = useState(false);
   const [channelHandle, setChannelHandle] = useState<string>("1");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { user, logout, signInWithGoogle, loading } = useAuth();
+  const { toggleSidebar } = useSidebar();
 
   // Check if user has a channel (from Firebase Users collection)
   useEffect(() => {
@@ -83,6 +87,11 @@ const Header = () => {
     }
   };
 
+  const handleStartCall = () => {
+    const roomId = Math.random().toString(36).substring(2, 9);
+    router.push(`/call/${roomId}`);
+  };
+
   const handleSignOut = async () => {
     try {
       await logout();
@@ -99,13 +108,8 @@ const Header = () => {
     }
   };
 
-  const handleSignIn = async () => {
-    try {
-      await signInWithGoogle();
-      setIsDropdownOpen(false);
-    } catch (error) {
-      console.error("Sign in error:", error);
-    }
+  const handleSignIn = () => {
+    setIsAuthModalOpen(true);
   };
 
   const handleCreateChannel = (channelData: any) => {
@@ -137,6 +141,7 @@ const Header = () => {
       { name: "History", icon: History, path: "/history", onClick: () => setIsDropdownOpen(false) },
       { name: "Liked videos", icon: ThumbsUp, path: "/liked", onClick: () => setIsDropdownOpen(false) },
       { name: "Watch later", icon: Clock, path: "/watch-later", onClick: () => setIsDropdownOpen(false) },
+      { name: "Downloads", icon: Download, path: "/downloads", onClick: () => setIsDropdownOpen(false) },
       { divider: true, name: "", icon: Video },
       { name: "Sign out", icon: LogOut, onClick: handleSignOut, isSignOut: true },
     ];
@@ -153,14 +158,17 @@ const Header = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-2 bg-white border-b dark:bg-black dark:border-gray-800">
+      <header className="sticky top-0 z-50 h-14 flex items-center justify-between px-4 bg-white border-b border-gray-200 dark:border-none dark:bg-[#0f0f0f]">
         {/* Left Section - Menu & Logo */}
-        <div className="flex items-center gap-4">
-          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <button 
+            onClick={toggleSidebar}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition focus:outline-none"
+          >
             <Menu className="w-6 h-6" />
           </button>
           <Link href="/" className="flex items-center gap-1">
-            <span className="text-2xl font-bold tracking-tight">
+            <span className="text-xl sm:text-2xl font-bold tracking-tight">
               <span className="text-red-600">You</span>
               <span className="text-black dark:text-white">Tube</span>
             </span>
@@ -168,24 +176,24 @@ const Header = () => {
         </div>
 
         {/* Center Section - Search Bar (ONLY ONE) */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-2xl mx-4">
-          <div className="flex items-center gap-2">
+        <form onSubmit={handleSearch} className="flex-1 max-w-2xl mx-2 sm:mx-4">
+          <div className="flex items-center gap-1 sm:gap-2">
             <div className="relative flex-1">
               <input
                 type="text"
                 placeholder="Search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-l-full focus:outline-none focus:border-blue-500 dark:bg-gray-800 dark:border-gray-700"
+                className="w-full px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-l-full focus:outline-none focus:border-blue-500 dark:bg-[#121212] dark:border-[#303030] dark:text-white dark:focus:border-blue-500 text-sm sm:text-base"
               />
               <button
                 type="submit"
-                className="absolute right-0 top-0 h-full px-5 bg-gray-100 border border-l-0 border-gray-300 rounded-r-full hover:bg-gray-200 dark:bg-gray-700 dark:border-gray-600"
+                className="absolute right-0 top-0 h-full px-3 sm:px-5 bg-gray-100 border border-l-0 border-gray-300 rounded-r-full hover:bg-gray-200 dark:bg-[#222222] dark:border-[#303030] dark:hover:bg-[#303030] dark:text-white"
               >
-                <Search className="w-5 h-5" />
+                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
-            <button type="button" className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 dark:bg-gray-800">
+            <button type="button" className="hidden sm:block p-2 bg-gray-100 rounded-full hover:bg-gray-200 dark:bg-[#181818] dark:hover:bg-[#303030] dark:text-white ml-2">
               <Mic className="w-5 h-5" />
             </button>
           </div>
@@ -193,6 +201,9 @@ const Header = () => {
 
         {/* Right Section - Actions & User */}
         <div className="flex items-center gap-2">
+          <button onClick={handleStartCall} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition text-blue-600" title="Start Video Call">
+            <Phone className="w-5 h-5" />
+          </button>
           <button className="p-2 hover:bg-gray-100 rounded-full transition">
             <Video className="w-5 h-5" />
           </button>
@@ -293,6 +304,15 @@ const Header = () => {
         onClose={() => setIsChannelDialogOpen(false)}
         onSave={handleCreateChannel}
         mode="create"
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={(userData) => {
+          // Normally we'd set the user in AuthContext or force a refresh
+          window.location.reload();
+        }}
       />
     </>
   );

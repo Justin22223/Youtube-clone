@@ -1,4 +1,6 @@
 "use client";
+import { getAvatarUrl } from "@/lib/utils";
+
 
 import { useState, useRef, useEffect } from "react";
 import { 
@@ -181,7 +183,7 @@ const ChannelDialog = ({
         name: formData.name,
         handle: formData.handle,
         description: formData.description,
-        avatar: avatarPreview || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random&color=fff&size=128`,
+        avatar: avatarPreview || getAvatarUrl(formData.name, "random"),
         banner: bannerPreview || "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1200",
         location: formData.location,
         website: formData.website,

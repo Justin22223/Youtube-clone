@@ -54,6 +54,12 @@ const ChannelTab = ({
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
 
+  useEffect(() => {
+    if (externalActiveTab && externalActiveTab !== activeTab) {
+      setActiveTab(externalActiveTab);
+    }
+  }, [externalActiveTab]);
+
   // Sample counts for tabs
   const tabCounts: Record<string, number> = {
     videos: 128,

@@ -54,4 +54,10 @@ export const api = {
     const response = await axiosInstance.put(`/api/auth/subscribe/${channelId}`, { userId });
     return response.data;
   },
+
+  // Get liked videos for user
+  getLikedVideos: async (userId) => {
+    const response = await axiosInstance.get(`/api/videos/liked/${userId}`);
+    return response.data;
+  },
 };

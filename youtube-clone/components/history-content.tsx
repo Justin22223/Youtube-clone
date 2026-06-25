@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getImageUrl } from "@/lib/utils";
+import { getAvatarUrl, getImageUrl } from "@/lib/utils";
 import { 
   Clock, 
   Trash2, 
@@ -59,7 +59,7 @@ const HistoryContent = ({
       id: "1",
       title: "Building a YouTube Clone with Next.js and shadcn/ui",
       channel: "CodeMaster",
-      channelAvatar: "https://ui-avatars.com/api/?name=CodeMaster&background=E74C3C&color=fff&size=32",
+      channelAvatar: getAvatarUrl("CodeMaster", "E74C3C"),
       thumbnail: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400",
       views: "124K views",
       timestamp: "2 days ago",
@@ -71,7 +71,7 @@ const HistoryContent = ({
       id: "2",
       title: "The Future of AI in 2025",
       channel: "TechToday",
-      channelAvatar: "https://ui-avatars.com/api/?name=TechToday&background=3498DB&color=fff&size=32",
+      channelAvatar: getAvatarUrl("TechToday", "3498DB"),
       thumbnail: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400",
       views: "89K views",
       timestamp: "5 days ago",
@@ -83,7 +83,7 @@ const HistoryContent = ({
       id: "3",
       title: "Top 10 JavaScript Frameworks to Learn",
       channel: "WebDev Simplified",
-      channelAvatar: "https://ui-avatars.com/api/?name=WebDev&background=2ECC71&color=fff&size=32",
+      channelAvatar: getAvatarUrl("WebDev", "2ECC71"),
       thumbnail: "https://images.unsplash.com/photo-1592609931095-54a2168ae893?w=400",
       views: "256K views",
       timestamp: "1 week ago",
@@ -95,7 +95,7 @@ const HistoryContent = ({
       id: "4",
       title: "How to Build a Startup from Scratch",
       channel: "Entrepreneur Life",
-      channelAvatar: "https://ui-avatars.com/api/?name=Entrepreneur&background=F39C12&color=fff&size=32",
+      channelAvatar: getAvatarUrl("Entrepreneur", "F39C12"),
       thumbnail: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400",
       views: "45K views",
       timestamp: "3 days ago",
@@ -107,7 +107,7 @@ const HistoryContent = ({
       id: "5",
       title: "Mastering React Server Components",
       channel: "React University",
-      channelAvatar: "https://ui-avatars.com/api/?name=React&background=9B59B6&color=fff&size=32",
+      channelAvatar: getAvatarUrl("React", "9B59B6"),
       thumbnail: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400",
       views: "312K views",
       timestamp: "4 days ago",
