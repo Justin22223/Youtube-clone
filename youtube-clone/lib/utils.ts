@@ -11,8 +11,11 @@ export const getBackendUrl = () => {
       return process.env.NEXT_PUBLIC_BACKEND_URL;
     }
     const hostname = window.location.hostname;
-    if (hostname.includes("vercel.app") || hostname.includes("localhost")) {
+    if (hostname.includes("vercel.app")) {
       return "https://youtube-clone-1-qtyo.onrender.com"; // Fallback to Render URL
+    }
+    if (hostname.includes("localhost")) {
+      return "http://localhost:5000";
     }
     return `http://${hostname}:5000`;
   }

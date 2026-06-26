@@ -2,7 +2,7 @@ import axios from "axios";
 import { getBackendUrl } from "./utils";
 
 const axiosInstance = axios.create({
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },

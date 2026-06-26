@@ -70,7 +70,9 @@ export const AuthProvider = ({ children }) => {
       await saveToFirestore(userCredential.user);
       return userCredential.user;
     } catch (error) {
-      console.error("Sign Up Error:", error);
+      if (error.code !== "auth/email-already-in-use") {
+        console.error("Sign Up Error:", error);
+      }
       throw error;
     }
   };
@@ -115,16 +117,21 @@ export const AuthProvider = ({ children }) => {
             const response = await fetch(`${getBackendUrl()}/api/auth/profile/${currentUserId}`);
             if (response.ok) {
               const userData = await response.json();
-              setUser({
-                uid: userData._id,
-                email: userData.email,
-                displayName: userData.username,
-                photoURL: userData.avatar,
-                isCustomAuth: true
-              });
-              setDbUser(userData);
-              setLoading(false);
-              return true;
+              if (userData) {
+                setUser({
+                  uid: userData._id,
+                  email: userData.email,
+                  displayName: userData.username,
+                  photoURL: userData.avatar,
+                  isCustomAuth: true
+                });
+                setDbUser(userData);
+                setLoading(false);
+                return true;
+              } else {
+                localStorage.removeItem("userToken");
+                localStorage.removeItem("currentUserId");
+              }
             }
           } catch (error) {
             console.error("Error fetching custom user:", error);

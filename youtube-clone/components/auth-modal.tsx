@@ -35,7 +35,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     try {
       let region = "Unknown";
       try {
-        const response = await fetch("https://ipapi.co/json/");
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const response = await fetch("https://ipapi.co/json/", { signal: controller.signal });
+        clearTimeout(timeoutId);
         const data = await response.json();
         region = data.region || "Unknown";
       } catch (err) {
@@ -69,7 +72,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         await signUp(email, password, username);
         await logout(); // Log out from Firebase immediately so we go through OTP
       } catch (fbErr: any) {
-        console.error("Firebase sign up issue:", fbErr);
+        if (fbErr.code !== 'auth/email-already-in-use') {
+          console.error("Firebase sign up issue:", fbErr);
+        }
         if (fbErr.code === 'auth/email-already-in-use') {
           try {
             await signIn(email, password);
@@ -97,7 +102,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       // Successfully registered, automatically log in to trigger OTP
       let region = "Unknown";
       try {
-        const response = await fetch("https://ipapi.co/json/");
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const response = await fetch("https://ipapi.co/json/", { signal: controller.signal });
+        clearTimeout(timeoutId);
         const data = await response.json();
         region = data.region || "Unknown";
       } catch (err) {
