@@ -18,17 +18,8 @@ const initTransporter = async () => {
       });
       console.log("Configured Nodemailer with Gmail SMTP.");
     } else {
-      console.warn("No EMAIL_USER or EMAIL_PASS found in .env. Falling back to Ethereal for testing.");
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransport({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
+      console.warn("No EMAIL_USER or EMAIL_PASS found in .env. Skipping real email sending. OTPs will be printed to console only.");
+      transporter = null;
     }
   }
   return transporter;
@@ -74,29 +65,36 @@ export const login = async (req, res) => {
     if (otpMethod === "email") {
       const mailer = await initTransporter();
       console.log(`[EMAIL] Sending OTP ${otp} to email ${user.email} (Region: ${region})`);
-      const info = await mailer.sendMail({
-        from: '"YouTube Clone Auth" <no-reply@youtube-clone.local>',
-        to: user.email,
-        subject: "Your Login OTP",
-        text: `Your OTP for login is: ${otp}`,
-        html: `<b>Your OTP for login is: ${otp}</b>`,
-      });
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      if (previewUrl) console.log(`Email Preview URL: ${previewUrl}`);
+      if (mailer) {
+        const info = await mailer.sendMail({
+          from: '"YouTube Clone Auth" <no-reply@youtube-clone.local>',
+          to: user.email,
+          subject: "Your Login OTP",
+          text: `Your OTP for login is: ${otp}`,
+          html: `<b>Your OTP for login is: ${otp}</b>`,
+        });
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        if (previewUrl) console.log(`Email Preview URL: ${previewUrl}`);
+      } else {
+        console.log(`[DEV MODE] Your OTP is: ${otp}`);
+      }
     } else {
       const mailer = await initTransporter();
       const mobile = user.mobileNumber || "Not Provided";
       console.log(`[SMS SIMULATION] Simulating SMS OTP ${otp} to ${mobile} via Email (Region: ${region || "Unknown"})`);
-      // Simulating SMS by also sending an email so you can test it
-      const info = await mailer.sendMail({
-        from: '"YouTube Clone Auth (SMS)" <no-reply@youtube-clone.local>',
-        to: user.email,
-        subject: "Your SMS Login OTP",
-        text: `This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}`,
-        html: `<b>This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}</b>`,
-      });
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      if (previewUrl) console.log(`SMS Email Preview URL: ${previewUrl}`);
+      if (mailer) {
+        const info = await mailer.sendMail({
+          from: '"YouTube Clone Auth (SMS)" <no-reply@youtube-clone.local>',
+          to: user.email,
+          subject: "Your SMS Login OTP",
+          text: `This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}`,
+          html: `<b>This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}</b>`,
+        });
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        if (previewUrl) console.log(`SMS Email Preview URL: ${previewUrl}`);
+      } else {
+        console.log(`[DEV MODE] Your SMS OTP is: ${otp}`);
+      }
     }
 
     res.status(200).json({
