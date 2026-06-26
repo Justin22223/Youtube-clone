@@ -17,7 +17,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   const [password, setPassword] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [otp, setOtp] = useState("");
-  const { signUp, logout } = useAuth();
+  const { signUp, signIn, logout } = useAuth();
   const [step, setStep] = useState<"login" | "register" | "otp">("login");
   const [userId, setUserId] = useState<string | null>(null);
   const [otpMethod, setOtpMethod] = useState<string | null>(null);
@@ -70,12 +70,30 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         await logout(); // Log out from Firebase immediately so we go through OTP
       } catch (fbErr: any) {
         console.error("Firebase sign up issue:", fbErr);
-        setError(fbErr.message || "Failed to create account in Firebase. Please ensure Email/Password sign-in is enabled in Firebase Console.");
-        setLoading(false);
-        return;
+        if (fbErr.code === 'auth/email-already-in-use') {
+          try {
+            await signIn(email, password);
+            await logout();
+          } catch (signInErr) {
+            setError("Email is already registered. Please use correct password to link account or sign in.");
+            setLoading(false);
+            return;
+          }
+        } else {
+          setError(fbErr.message || "Failed to create account in Firebase. Please ensure Email/Password sign-in is enabled in Firebase Console.");
+          setLoading(false);
+          return;
+        }
       }
 
-      await api.register({ username, email, password, mobileNumber });
+      try {
+        await api.register({ username, email, password, mobileNumber });
+      } catch (dbErr: any) {
+        if (dbErr.response?.data?.message !== "User already exists") {
+          throw dbErr;
+        }
+      }
+
       // Successfully registered, automatically log in to trigger OTP
       let region = "Unknown";
       try {
