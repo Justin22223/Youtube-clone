@@ -13,6 +13,7 @@ import {
   updateProfile
 } from "./firebase";
 import { getUserWithChannel, saveUserAfterLogin } from "./firebase";
+import { getBackendUrl } from "./utils";
 
 const AuthContext = createContext();
 
@@ -111,7 +112,7 @@ export const AuthProvider = ({ children }) => {
         const currentUserId = localStorage.getItem("currentUserId");
         if (token && currentUserId) {
           try {
-            const response = await fetch(`http://localhost:5000/api/auth/profile/${currentUserId}`);
+            const response = await fetch(`${getBackendUrl()}/api/auth/profile/${currentUserId}`);
             if (response.ok) {
               const userData = await response.json();
               setUser({
