@@ -15,9 +15,9 @@ const initTransporter = async () => {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
-        connectionTimeout: 5000,
-        greetingTimeout: 5000,
-        socketTimeout: 5000,
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 15000,
       });
       console.log("Configured Nodemailer with Gmail SMTP.");
     } else {
@@ -80,7 +80,7 @@ export const login = async (req, res) => {
             text: `Your OTP for login is: ${otp}`,
             html: `<b>Your OTP for login is: ${otp}</b>`,
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Email sending timed out")), 5000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Email sending timed out")), 15000))
         ]);
         const previewUrl = nodemailer.getTestMessageUrl(info);
         if (previewUrl) console.log(`Email Preview URL: ${previewUrl}`);
@@ -100,7 +100,7 @@ export const login = async (req, res) => {
             text: `This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}`,
             html: `<b>This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}</b>`,
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Email sending timed out")), 5000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Email sending timed out")), 15000))
         ]);
         const previewUrl = nodemailer.getTestMessageUrl(info);
         if (previewUrl) console.log(`SMS Email Preview URL: ${previewUrl}`);
