@@ -2,30 +2,22 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Auth from "../models/auth.js";
 import Video from "../models/video.js";
-import nodemailer from "nodemailer";
+import formData from "form-data";
+import Mailgun from "mailgun.js";
 
-// Email transporter (will be initialized on first use)
-let transporter = null;
-const initTransporter = async () => {
-  if (!transporter) {
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 15000,
-      });
-      console.log("Configured Nodemailer with Gmail SMTP.");
+// Mailgun client (will be initialized on first use)
+let mg = null;
+const initMailgun = () => {
+  if (!mg) {
+    if (process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN) {
+      const mailgun = new Mailgun(formData);
+      mg = mailgun.client({ username: 'api', key: process.env.MAILGUN_API_KEY });
+      console.log("Configured Mailgun API.");
     } else {
-      console.warn("No EMAIL_USER or EMAIL_PASS found in .env. Skipping real email sending. OTPs will be printed to console only.");
-      transporter = null;
+      console.warn("No MAILGUN_API_KEY or MAILGUN_DOMAIN found. Skipping real email sending. OTPs will be printed to console only.");
     }
   }
-  return transporter;
+  return mg;
 };
 
 export const register = async (req, res) => {
@@ -69,48 +61,40 @@ export const login = async (req, res) => {
     await user.save();
 
     if (otpMethod === "email") {
-      const mailer = await initTransporter();
+      const mailer = initMailgun();
       console.log(`[EMAIL] Sending OTP ${otp} to email ${user.email} (Region: ${region})`);
       if (mailer) {
         try {
-          const info = await Promise.race([
-            mailer.sendMail({
-              from: '"YouTube Clone Auth" <no-reply@youtube-clone.local>',
-              to: user.email,
-              subject: "Your Login OTP",
-              text: `Your OTP for login is: ${otp}`,
-              html: `<b>Your OTP for login is: ${otp}</b>`,
-            }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Email sending timed out")), 15000))
-          ]);
-          const previewUrl = nodemailer.getTestMessageUrl(info);
-          if (previewUrl) console.log(`Email Preview URL: ${previewUrl}`);
+          const msg = await mailer.messages.create(process.env.MAILGUN_DOMAIN, {
+            from: `YouTube Clone Auth <mailgun@${process.env.MAILGUN_DOMAIN}>`,
+            to: [user.email],
+            subject: "Your Login OTP",
+            text: `Your OTP for login is: ${otp}`,
+            html: `<b>Your OTP for login is: ${otp}</b>`,
+          });
+          console.log(`Email sent via Mailgun:`, msg.id);
         } catch (emailErr) {
-          console.error("Failed to send email (Render free tier blocks SMTP):", emailErr.message);
+          console.error("Failed to send email via Mailgun:", emailErr.message);
         }
       } else {
         console.log(`[DEV MODE] Your OTP is: ${otp}`);
       }
     } else {
-      const mailer = await initTransporter();
+      const mailer = initMailgun();
       const mobile = user.mobileNumber || "Not Provided";
       console.log(`[SMS SIMULATION] Simulating SMS OTP ${otp} to ${mobile} via Email (Region: ${region || "Unknown"})`);
       if (mailer) {
         try {
-          const info = await Promise.race([
-            mailer.sendMail({
-              from: '"YouTube Clone Auth (SMS)" <no-reply@youtube-clone.local>',
-              to: user.email,
-              subject: "Your SMS Login OTP",
-              text: `This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}`,
-              html: `<b>This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}</b>`,
-            }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Email sending timed out")), 15000))
-          ]);
-          const previewUrl = nodemailer.getTestMessageUrl(info);
-          if (previewUrl) console.log(`SMS Email Preview URL: ${previewUrl}`);
+          const msg = await mailer.messages.create(process.env.MAILGUN_DOMAIN, {
+            from: `YouTube Clone Auth <mailgun@${process.env.MAILGUN_DOMAIN}>`,
+            to: [user.email],
+            subject: "Your SMS Login OTP",
+            text: `This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}`,
+            html: `<b>This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}</b>`,
+          });
+          console.log(`SMS Simulation Email sent via Mailgun:`, msg.id);
         } catch (emailErr) {
-          console.error("Failed to send SMS simulation (Render free tier blocks SMTP):", emailErr.message);
+          console.error("Failed to send SMS simulation via Mailgun:", emailErr.message);
         }
       } else {
         console.log(`[DEV MODE] Your SMS OTP is: ${otp}`);
