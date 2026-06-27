@@ -72,18 +72,22 @@ export const login = async (req, res) => {
       const mailer = await initTransporter();
       console.log(`[EMAIL] Sending OTP ${otp} to email ${user.email} (Region: ${region})`);
       if (mailer) {
-        const info = await Promise.race([
-          mailer.sendMail({
-            from: '"YouTube Clone Auth" <no-reply@youtube-clone.local>',
-            to: user.email,
-            subject: "Your Login OTP",
-            text: `Your OTP for login is: ${otp}`,
-            html: `<b>Your OTP for login is: ${otp}</b>`,
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Email sending timed out")), 15000))
-        ]);
-        const previewUrl = nodemailer.getTestMessageUrl(info);
-        if (previewUrl) console.log(`Email Preview URL: ${previewUrl}`);
+        try {
+          const info = await Promise.race([
+            mailer.sendMail({
+              from: '"YouTube Clone Auth" <no-reply@youtube-clone.local>',
+              to: user.email,
+              subject: "Your Login OTP",
+              text: `Your OTP for login is: ${otp}`,
+              html: `<b>Your OTP for login is: ${otp}</b>`,
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Email sending timed out")), 15000))
+          ]);
+          const previewUrl = nodemailer.getTestMessageUrl(info);
+          if (previewUrl) console.log(`Email Preview URL: ${previewUrl}`);
+        } catch (emailErr) {
+          console.error("Failed to send email (Render free tier blocks SMTP):", emailErr.message);
+        }
       } else {
         console.log(`[DEV MODE] Your OTP is: ${otp}`);
       }
@@ -92,18 +96,22 @@ export const login = async (req, res) => {
       const mobile = user.mobileNumber || "Not Provided";
       console.log(`[SMS SIMULATION] Simulating SMS OTP ${otp} to ${mobile} via Email (Region: ${region || "Unknown"})`);
       if (mailer) {
-        const info = await Promise.race([
-          mailer.sendMail({
-            from: '"YouTube Clone Auth (SMS)" <no-reply@youtube-clone.local>',
-            to: user.email,
-            subject: "Your SMS Login OTP",
-            text: `This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}`,
-            html: `<b>This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}</b>`,
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Email sending timed out")), 15000))
-        ]);
-        const previewUrl = nodemailer.getTestMessageUrl(info);
-        if (previewUrl) console.log(`SMS Email Preview URL: ${previewUrl}`);
+        try {
+          const info = await Promise.race([
+            mailer.sendMail({
+              from: '"YouTube Clone Auth (SMS)" <no-reply@youtube-clone.local>',
+              to: user.email,
+              subject: "Your SMS Login OTP",
+              text: `This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}`,
+              html: `<b>This is a simulation of an SMS to ${mobile}. Your OTP is: ${otp}</b>`,
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Email sending timed out")), 15000))
+          ]);
+          const previewUrl = nodemailer.getTestMessageUrl(info);
+          if (previewUrl) console.log(`SMS Email Preview URL: ${previewUrl}`);
+        } catch (emailErr) {
+          console.error("Failed to send SMS simulation (Render free tier blocks SMTP):", emailErr.message);
+        }
       } else {
         console.log(`[DEV MODE] Your SMS OTP is: ${otp}`);
       }
@@ -113,7 +121,8 @@ export const login = async (req, res) => {
       requiresOtp: true,
       method: otpMethod,
       userId: user._id,
-      message: `OTP sent via ${otpMethod}`
+      message: `OTP sent via ${otpMethod}`,
+      devOtp: otp
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
