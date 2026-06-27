@@ -124,6 +124,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         setUserId(response.userId);
         setOtpMethod(response.method);
         setPreviewUrl(response.previewUrl);
+        if (response.devOtp) {
+          setOtp(response.devOtp); // Auto-fill since Render Free blocks emails
+        }
       } else {
         onSuccess(response.user);
         onClose();
