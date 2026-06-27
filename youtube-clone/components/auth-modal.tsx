@@ -94,6 +94,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       try {
         await api.register({ username, email, password, mobileNumber });
       } catch (dbErr: any) {
+        if (dbErr.response?.data?.message === "Username already taken") {
+          throw dbErr;
+        }
         if (dbErr.response?.data?.message !== "User already exists") {
           throw dbErr;
         }

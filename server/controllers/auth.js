@@ -33,6 +33,9 @@ export const register = async (req, res) => {
     const { username, email, password, mobileNumber } = req.body;
     const existingUser = await Auth.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
+      if (existingUser.username === username && existingUser.email !== email) {
+        return res.status(400).json({ message: "Username already taken" });
+      }
       return res.status(400).json({ message: "User already exists" });
     }
     const salt = await bcrypt.genSalt(10);
