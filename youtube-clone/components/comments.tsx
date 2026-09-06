@@ -154,7 +154,7 @@ const CommentItem = ({
     }
 
     try {
-      const res = await axiosInstance.post("/api/comments", {
+      const res = await axiosInstance.post("/api/comments/add", {
         videoId,
         userId: user.uid,
         username: dbUser?.username || user.displayName || "User",
@@ -566,7 +566,7 @@ const Comments = ({ videoId, commentCount = 0 }: CommentsProps) => {
     }
 
     try {
-      const res = await axiosInstance.post("/api/comments", {
+      const res = await axiosInstance.post("/api/comments/add", {
         videoId,
         userId: user.uid,
         username: dbUser?.username || user.displayName || "User",

@@ -111,7 +111,7 @@ export default function WatchPage() {
           timestamp: new Date().toLocaleDateString(),
         };
         
-        const res = await fetch(`${BACKEND_URL}/api/watchlater`, {
+        const res = await fetch(`${BACKEND_URL}/api/watchlater/add`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(videoData),

@@ -23,6 +23,20 @@ export async function GET(req, { params }) {
       return NextResponse.json(commentsWithReplies, { status: 200 });
     }
 
+    // Direct video ID
+    if (path.length === 24) {
+      const comments = await Comment.find({ videoId: path, parentCommentId: null }).sort({ createdAt: -1 });
+
+      const commentsWithReplies = await Promise.all(
+        comments.map(async (comment) => {
+          const replies = await Comment.find({ parentCommentId: comment._id }).sort({ createdAt: 1 });
+          return { ...comment.toObject(), replies };
+        })
+      );
+
+      return NextResponse.json(commentsWithReplies, { status: 200 });
+    }
+
     return NextResponse.json({ message: "Route not found" }, { status: 404 });
   } catch (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });
@@ -139,6 +153,32 @@ export async function PUT(req, { params }) {
       return NextResponse.json({ message: "Success" }, { status: 200 });
     }
 
+    return NextResponse.json({ message: "Route not found" }, { status: 404 });
+  } catch (error) {
+    return NextResponse.json({ message: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req, { params }) {
+  await dbConnect();
+  const { action } = await params;
+  const path = action.join("/");
+
+  try {
+    if (path.length === 24) {
+      const id = path;
+      const comment = await Comment.findById(id);
+      if (comment) {
+        if (comment.parentCommentId) {
+          await Comment.findByIdAndUpdate(comment.parentCommentId, {
+            $pull: { replies: id }
+          });
+        }
+        await Comment.deleteMany({ parentCommentId: id });
+        await Comment.findByIdAndDelete(id);
+      }
+      return NextResponse.json({ message: "Comment deleted" }, { status: 200 });
+    }
     return NextResponse.json({ message: "Route not found" }, { status: 404 });
   } catch (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });

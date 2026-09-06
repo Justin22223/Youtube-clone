@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, AlertCircle } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -16,6 +17,8 @@ const VideoPlayer = ({ videoUrl, title, onOpenComments, onNextVideo }: VideoPlay
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [limitReached, setLimitReached] = useState(false);
+  const { dbUser } = useAuth() as any;
 
   // Gesture refs
   const tapCountRef = useRef(0);
@@ -42,8 +45,21 @@ const VideoPlayer = ({ videoUrl, title, onOpenComments, onNextVideo }: VideoPlay
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+      const time = videoRef.current.currentTime;
+      setCurrentTime(time);
       setDuration(videoRef.current.duration);
+      
+      const plan = dbUser?.plan || "Free";
+      let limitSeconds = 300; // Free = 5 mins
+      if (plan === "Bronze") limitSeconds = 420; // 7 mins
+      else if (plan === "Silver") limitSeconds = 600; // 10 mins
+      else if (plan === "Gold" || plan === "Premium") limitSeconds = Infinity; // Unlimited
+      
+      if (time >= limitSeconds && !limitReached) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+        setLimitReached(true);
+      }
     }
   };
 
@@ -124,9 +140,24 @@ const VideoPlayer = ({ videoUrl, title, onOpenComments, onNextVideo }: VideoPlay
       {/* Clickable Overlay for Gestures */}
       <div 
         className="absolute inset-0 z-0 cursor-pointer"
-        onClick={handleVideoClick}
+        onClick={limitReached ? undefined : handleVideoClick}
         style={{ touchAction: 'none' }}
       />
+      
+      {/* Limit Reached Overlay */}
+      {limitReached && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm text-center px-4">
+          <AlertCircle className="w-16 h-16 text-rose-500 mb-4 animate-bounce" />
+          <h2 className="text-2xl font-bold text-white mb-2">Watch Limit Reached</h2>
+          <p className="text-gray-300 max-w-md mb-6">
+            You have reached the video watching limit for your current plan ({dbUser?.plan || "Free"}). 
+            Upgrade to a premium plan to watch unlimited videos.
+          </p>
+          <a href="/premium" className="px-6 py-2.5 bg-rose-600 text-white font-semibold rounded-full hover:bg-rose-700 transition">
+            Upgrade Now
+          </a>
+        </div>
+      )}
       
       {/* Video Controls */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition duration-300 z-10 pointer-events-none">

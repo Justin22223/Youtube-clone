@@ -26,6 +26,12 @@ export async function GET(req, { params }) {
       return NextResponse.json(video, { status: 200 });
     }
 
+    if (path.startsWith("liked/")) {
+      const userId = path.split("/")[1];
+      const videos = await Video.find({ likes: userId }).sort({ createdAt: -1 });
+      return NextResponse.json(videos, { status: 200 });
+    }
+
     return NextResponse.json({ message: "Route not found" }, { status: 404 });
   } catch (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });
