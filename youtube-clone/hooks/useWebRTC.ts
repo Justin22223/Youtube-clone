@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import io, { Socket } from "socket.io-client";
 
-const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const SOCKET_SERVER_URL = ""; // Empty connects to the same origin where the page is served
 
 interface UseWebRTCProps {
   roomId: string;
@@ -49,8 +49,6 @@ export function useWebRTC({ roomId }: UseWebRTCProps) {
           }
         };
 
-        socket.emit("join-room", roomId, socket.id);
-
         socket.on("user-connected", async (userId: string) => {
           // Another user connected, create an offer
           const offer = await pc.createOffer();
@@ -76,6 +74,9 @@ export function useWebRTC({ roomId }: UseWebRTCProps) {
             console.error("Error adding received ice candidate", e);
           }
         });
+
+        // Emit join-room ONLY AFTER all event listeners are registered!
+        socket.emit("join-room", roomId, socket.id);
 
       } catch (error: any) {
         console.warn("Error accessing media devices:", error);

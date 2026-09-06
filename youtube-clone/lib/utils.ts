@@ -6,29 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const getBackendUrl = () => {
-  if (typeof window !== "undefined") {
-    if (process.env.NEXT_PUBLIC_BACKEND_URL) {
-      return process.env.NEXT_PUBLIC_BACKEND_URL;
-    }
-    const hostname = window.location.hostname;
-    if (hostname.includes("vercel.app")) {
-      return "https://youtube-clone-1-qtyo.onrender.com"; // Fallback to Render URL
-    }
-    if (hostname.includes("localhost")) {
-      return "http://localhost:5000";
-    }
-    return `http://${hostname}:5000`;
-  }
-  return process.env.NEXT_PUBLIC_BACKEND_URL || "https://youtube-clone-1-qtyo.onrender.com";
+  return "";
 };
 
 export const getImageUrl = (url: string) => {
   if (!url) return "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400";
   
-  const backendUrl = getBackendUrl().replace(/\/$/, "");
+  const backendUrl = getBackendUrl();
   
   if (url.startsWith("http")) {
-    if (url.includes("localhost:5000") && !backendUrl.includes("localhost:5000")) {
+    if (url.includes("localhost:5000")) {
       return url.replace(/https?:\/\/localhost:5000/, backendUrl);
     }
     return url;
@@ -41,10 +28,10 @@ export const getImageUrl = (url: string) => {
 export const getVideoUrl = (url: string) => {
   if (!url) return "";
   
-  const backendUrl = getBackendUrl().replace(/\/$/, "");
+  const backendUrl = getBackendUrl();
   
   if (url.startsWith("http")) {
-    if (url.includes("localhost:5000") && !backendUrl.includes("localhost:5000")) {
+    if (url.includes("localhost:5000")) {
       return url.replace(/https?:\/\/localhost:5000/, backendUrl);
     }
     return url;

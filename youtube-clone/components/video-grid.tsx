@@ -137,7 +137,7 @@ const VideoGrid = () => {
     const fetchVideos = async () => {
       try {
         const backendUrl = getBackendUrl();
-        const res = await fetch(`${backendUrl}/api/videos`);
+        const res = await fetch(`${backendUrl}/api/videos/all`);
         const data = await res.json();
         setVideos(data);
       } catch (error) {

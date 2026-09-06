@@ -131,7 +131,7 @@ export default function WatchPage() {
   useEffect(() => {
     const fetchVideo = async () => {
       try {
-        const res = await fetch(`${BACKEND_URL}/api/videos/${videoId}`);
+        const res = await fetch(`${BACKEND_URL}/api/videos/video/${videoId}`);
         const data = await res.json();
         setVideo(data);
       } catch (error) {
